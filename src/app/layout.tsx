@@ -17,7 +17,7 @@ const jetbrainsMono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "ScamShield - Is This Legit or Am I About to Get Screwed?",
+  title: "ScamShieldy - Is This Legit or Am I About to Get Screwed?",
   description:
     "AI-powered scam detection. Paste a URL, email, or text message and get an instant threat analysis with evidence-backed scoring.",
   icons: { icon: "/favicon.ico" },

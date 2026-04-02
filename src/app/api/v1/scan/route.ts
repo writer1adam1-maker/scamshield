@@ -193,7 +193,7 @@ export async function POST(req: NextRequest) {
 // --- GET: API info / health ---
 export async function GET() {
   return NextResponse.json({
-    api: "ScamShield Detection API",
+    api: "ScamShieldy Detection API",
     version: API_VERSION,
     endpoints: {
       "POST /api/v1/scan": "Scan a URL or text for scam indicators",
@@ -201,6 +201,6 @@ export async function GET() {
     },
     auth: "Include your API key as: Authorization: Bearer ss_live_YOUR_KEY",
     getKey: "/settings",
-    docs: "https://scamshield.io/api-docs",
+    docs: "https://scamshieldy.com/api-docs",
   });
 }

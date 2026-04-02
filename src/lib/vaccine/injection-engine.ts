@@ -86,8 +86,8 @@ export class InjectionEngine {
     return `
     (function() {
       'use strict';
-      if (window._scamshieldVaccineApplied) return;
-      window._scamshieldVaccineApplied = true;
+      if (window._scamshieldyVaccineApplied) return;
+      window._scamshieldyVaccineApplied = true;
 
       var RULES = ${rulesJson};
 
@@ -98,11 +98,11 @@ export class InjectionEngine {
             if (!el) return;
 
             var overlay = document.createElement('div');
-            overlay.setAttribute('data-scamshield-block', rule.id);
+            overlay.setAttribute('data-scamshieldy-block', rule.id);
             overlay.style.cssText = 'position:absolute;top:0;left:0;width:100%;height:100%;background:rgba(255,59,59,0.15);border:3px solid #ff3b3b;pointer-events:all;display:flex;align-items:center;justify-content:center;z-index:999999;font-family:Arial,sans-serif;color:#ff3b3b;font-weight:bold;font-size:14px;';
 
             var msg = document.createElement('span');
-            msg.textContent = rule.message || 'Blocked by ScamShield';
+            msg.textContent = rule.message || 'Blocked by ScamShieldy';
             overlay.appendChild(msg);
 
             el.style.position = 'relative';
@@ -122,11 +122,11 @@ export class InjectionEngine {
         RULES.filter(function(r) { return r.type === 'warn'; }).forEach(function(rule) {
           try {
             var bar = document.createElement('div');
-            bar.setAttribute('data-scamshield-warn', rule.id);
+            bar.setAttribute('data-scamshieldy-warn', rule.id);
             bar.style.cssText = 'position:fixed;top:0;left:0;right:0;background:#fff3cd;border-bottom:3px solid #ffc107;padding:12px 16px;z-index:999999;font-family:Arial,sans-serif;font-size:14px;color:#856404;box-shadow:0 2px 4px rgba(0,0,0,0.1);display:flex;justify-content:space-between;align-items:center;';
 
             var text = document.createElement('span');
-            text.textContent = rule.message || 'Warning from ScamShield';
+            text.textContent = rule.message || 'Warning from ScamShieldy';
             bar.appendChild(text);
 
             var btn = document.createElement('button');
@@ -168,7 +168,7 @@ export class InjectionEngine {
         RULES.filter(function(r) { return r.type === 'monitor'; }).forEach(function(rule) {
           try {
             document.addEventListener('submit', function(e) {
-              console.warn('[ScamShield Monitor] Form submission detected:', e.target.action || 'no action');
+              console.warn('[ScamShieldy Monitor] Form submission detected:', e.target.action || 'no action');
             }, true);
           } catch(e) {}
         });

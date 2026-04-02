@@ -69,7 +69,7 @@ function LoginForm() {
             <Shield className="w-7 h-7 text-shield" />
           </div>
           <h1 className="text-2xl font-bold text-text-primary">Welcome back</h1>
-          <p className="text-text-muted text-sm mt-1">Sign in to your ScamShield account</p>
+          <p className="text-text-muted text-sm mt-1">Sign in to your ScamShieldy account</p>
         </div>
 
         {/* Error from URL (e.g. OAuth failure) */}

@@ -11,7 +11,7 @@ export default function Error({
   reset: () => void;
 }) {
   useEffect(() => {
-    console.error("[ScamShield] Page error:", error);
+    console.error("[ScamShieldy] Page error:", error);
   }, [error]);
 
   return (

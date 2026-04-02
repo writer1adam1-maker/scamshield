@@ -2,8 +2,8 @@ import type { MetadataRoute } from "next";
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: "ScamShield",
-    short_name: "ScamShield",
+    name: "ScamShieldy",
+    short_name: "ScamShieldy",
     description: "Is This Legit or Am I About to Get Screwed?",
     theme_color: "#0a0a0f",
     background_color: "#0a0a0f",

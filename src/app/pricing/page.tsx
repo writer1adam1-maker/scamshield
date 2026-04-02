@@ -45,9 +45,9 @@ interface FaqItem {
 
 const FAQ: FaqItem[] = [
   {
-    question: "How does ScamShield detect scams?",
+    question: "How does ScamShieldy detect scams?",
     answer:
-      "ScamShield uses the VERIDICT algorithm, a 4-layer analysis engine that combines Fisher Information scoring, Conservation Law violation detection, Cascade Breaking analysis, and an Immune Repertoire pattern matcher. Together these layers analyze URLs, text patterns, domain age, SSL certificates, and known scam signatures to produce a threat confidence score from 0-100.",
+      "ScamShieldy uses the VERIDICT algorithm, a 4-layer analysis engine that combines Fisher Information scoring, Conservation Law violation detection, Cascade Breaking analysis, and an Immune Repertoire pattern matcher. Together these layers analyze URLs, text patterns, domain age, SSL certificates, and known scam signatures to produce a threat confidence score from 0-100.",
   },
   {
     question: "Is my data safe?",
@@ -67,7 +67,7 @@ const FAQ: FaqItem[] = [
   {
     question: "How accurate is the detection?",
     answer:
-      "ScamShield's VERIDICT engine achieves a high detection rate for known scam patterns. However, no system is 100% accurate. Always use your own judgment alongside our analysis. We continuously update our pattern database to improve accuracy.",
+      "ScamShieldy's VERIDICT engine achieves a high detection rate for known scam patterns. However, no system is 100% accurate. Always use your own judgment alongside our analysis. We continuously update our pattern database to improve accuracy.",
   },
   {
     question: "Do you support screenshot analysis?",

@@ -20,7 +20,7 @@ import { checkRateLimit } from "@/lib/vaccine/rate-limiter";
 const ALLOWED_ORIGINS = [
   "chrome-extension://", // Chrome extensions
   "moz-extension://",    // Firefox extensions
-  "https://scamshield-green.vercel.app",
+  "https://scamshieldy.com",
 ];
 
 export async function GET(request: NextRequest) {
@@ -116,8 +116,8 @@ function getDefaultProtectionScript(): string {
   return `
     (function() {
       'use strict';
-      if (window._scamshieldVaccineApplied) return;
-      window._scamshieldVaccineApplied = true;
+      if (window._scamshieldyVaccineApplied) return;
+      window._scamshieldyVaccineApplied = true;
 
       document.addEventListener('submit', function(e) {
         var form = e.target;
@@ -128,7 +128,7 @@ function getDefaultProtectionScript(): string {
           var currentDomain = window.location.hostname;
           if (formDomain && formDomain !== currentDomain) {
             var confirmed = confirm(
-              'ScamShield: This form submits to a different server (' + formDomain + '). Proceed?'
+              'ScamShieldy: This form submits to a different server (' + formDomain + '). Proceed?'
             );
             if (!confirmed) e.preventDefault();
           }
@@ -153,9 +153,9 @@ export async function OPTIONS() {
     {},
     {
       headers: {
-        "Access-Control-Allow-Origin": "https://scamshield-green.vercel.app",
+        "Access-Control-Allow-Origin": "https://scamshieldy.com",
         "Access-Control-Allow-Methods": "GET, OPTIONS",
-        "Access-Control-Allow-Headers": "Content-Type, X-ScamShield-Signature",
+        "Access-Control-Allow-Headers": "Content-Type, X-ScamShieldy-Signature",
         "Access-Control-Max-Age": "3600",
       },
     }

@@ -99,7 +99,7 @@ export function Sidebar() {
             </div>
             <div>
               <span className="text-lg font-bold tracking-tight text-text-primary">
-                Scam<span className="text-shield">Shield</span>
+                Scam<span className="text-shield">Shieldy</span>
               </span>
               <div className="text-[9px] font-mono text-text-muted tracking-[0.3em] uppercase -mt-0.5">
                 Threat Intel

@@ -617,10 +617,10 @@ export function ScanResults({
           {/* Share */}
           <button
             onClick={async () => {
-              const shareText = `ScamShield Analysis: Score ${score}/100 - ${verdictText}`;
+              const shareText = `ScamShieldy Analysis: Score ${score}/100 - ${verdictText}`;
               if (navigator.share) {
                 try {
-                  await navigator.share({ title: "ScamShield Results", text: shareText });
+                  await navigator.share({ title: "ScamShieldy Results", text: shareText });
                 } catch {
                   // User cancelled or share failed — fall back to clipboard
                   await navigator.clipboard.writeText(shareText);

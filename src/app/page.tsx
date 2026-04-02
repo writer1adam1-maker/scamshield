@@ -62,7 +62,7 @@ export default function HomePage() {
     try {
       let res: Response;
 
-      console.log("[ScamShield] Starting scan:", scanData.type, scanData.content.slice(0, 80));
+      console.log("[ScamShieldy] Starting scan:", scanData.type, scanData.content.slice(0, 80));
 
       if (scanData.type === "screenshot" && scanData.file) {
         const formData = new FormData();
@@ -79,19 +79,19 @@ export default function HomePage() {
         });
       }
 
-      console.log("[ScamShield] API response status:", res.status);
+      console.log("[ScamShieldy] API response status:", res.status);
 
       if (!res.ok) {
         const body = await res.json().catch(() => ({}));
-        console.error("[ScamShield] API error body:", body);
+        console.error("[ScamShieldy] API error body:", body);
         throw new Error(body.error || `Scan failed (${res.status})`);
       }
 
       const result: VERIDICTResult = await res.json();
-      console.log("[ScamShield] Got result — score:", result.score, "evidence:", result.evidence?.length, "layers:", Object.keys(result.layerScores ?? {}));
+      console.log("[ScamShieldy] Got result — score:", result.score, "evidence:", result.evidence?.length, "layers:", Object.keys(result.layerScores ?? {}));
       setResults(result);
     } catch (err) {
-      console.error("[ScamShield] Scan error:", err);
+      console.error("[ScamShieldy] Scan error:", err);
       setError(err instanceof Error ? err.message : "An unexpected error occurred");
     } finally {
       setScanning(false);

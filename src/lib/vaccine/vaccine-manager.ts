@@ -354,7 +354,7 @@ export class VaccineManager {
 
     if (threatTypes.has(VaccineThreatType.MALWARE_SIGNATURE)) {
       recommendations.push(
-        "This site contains known malware patterns. ScamShield has blocked malicious scripts."
+        "This site contains known malware patterns. ScamShieldy has blocked malicious scripts."
       );
     }
 

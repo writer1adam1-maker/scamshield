@@ -8,7 +8,7 @@ interface BeforeInstallPromptEvent extends Event {
   userChoice: Promise<{ outcome: "accepted" | "dismissed" }>;
 }
 
-const DISMISS_KEY = "scamshield-pwa-dismissed";
+const DISMISS_KEY = "scamshieldy-pwa-dismissed";
 
 export function InstallPrompt() {
   const [deferredPrompt, setDeferredPrompt] =
@@ -67,7 +67,7 @@ export function InstallPrompt() {
           {/* Text */}
           <div className="flex-1 min-w-0">
             <p className="text-sm font-semibold text-white">
-              Install ScamShield
+              Install ScamShieldy
             </p>
             <p className="text-xs text-gray-400">
               Get instant access from your home screen
