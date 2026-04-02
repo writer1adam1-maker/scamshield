@@ -1,0 +1,102 @@
+@import "tailwindcss";
+
+@theme {
+  /* ScamShield Cybersecurity Palette - Original Dark Theme */
+  --color-void: #0a0a0f;
+  --color-abyss: #0d0d14;
+  --color-obsidian: #12121c;
+  --color-slate-deep: #1a1a2e;
+  --color-slate-mid: #252540;
+  --color-slate-light: #3a3a5c;
+
+  /* Threat spectrum */
+  --color-safe: #00e5a0;
+  --color-safe-dim: #00b87d;
+  --color-caution: #fbbf24;
+  --color-caution-dim: #d4a017;
+  --color-danger: #ff3b5c;
+  --color-danger-dim: #cc2f4a;
+  --color-critical: #ff1744;
+
+  /* Accent - Electric Cyan (shield/scan feel) */
+  --color-shield: #00d4ff;
+  --color-shield-dim: #00a8cc;
+  --color-shield-glow: #00d4ff33;
+
+  /* Text */
+  --color-text-primary: #e8e8f0;
+  --color-text-secondary: #9494b8;
+  --color-text-muted: #5a5a7a;
+
+  /* Borders */
+  --color-border: #2a2a44;
+  --color-border-bright: #3a3a5c;
+
+  --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
+  --font-mono: 'JetBrains Mono', 'Fira Code', monospace;
+}
+
+/* Animated scan line effect */
+@keyframes scanline {
+  0% { transform: translateY(-100%); }
+  100% { transform: translateY(100vh); }
+}
+
+@keyframes pulse-glow {
+  0%, 100% { box-shadow: 0 0 20px var(--color-shield-glow); }
+  50% { box-shadow: 0 0 40px var(--color-shield-glow), 0 0 60px var(--color-shield-glow); }
+}
+
+@keyframes threat-pulse {
+  0%, 100% { opacity: 0.4; }
+  50% { opacity: 1; }
+}
+
+@keyframes grid-flow {
+  0% { background-position: 0 0; }
+  100% { background-position: 50px 50px; }
+}
+
+body {
+  background: var(--color-void);
+  color: var(--color-text-primary);
+  font-family: var(--font-sans);
+}
+
+/* Hex grid background pattern */
+.hex-grid-bg {
+  background-image:
+    linear-gradient(var(--color-border) 1px, transparent 1px),
+    linear-gradient(90deg, var(--color-border) 1px, transparent 1px);
+  background-size: 50px 50px;
+  animation: grid-flow 20s linear infinite;
+}
+
+/* Glassmorphism card */
+.glass-card {
+  background: linear-gradient(135deg, rgba(26, 26, 46, 0.8), rgba(18, 18, 28, 0.9));
+  backdrop-filter: blur(20px);
+  border: 1px solid var(--color-border);
+  border-radius: 16px;
+}
+
+/* Shield glow effect */
+.shield-glow {
+  animation: pulse-glow 3s ease-in-out infinite;
+}
+
+/* Threat level indicator */
+.threat-pulse {
+  animation: threat-pulse 1.5s ease-in-out infinite;
+}
+
+/* Score ring */
+.score-ring {
+  filter: drop-shadow(0 0 10px currentColor);
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: var(--color-abyss); }
+::-webkit-scrollbar-thumb { background: var(--color-slate-mid); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--color-slate-light); }

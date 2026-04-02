@@ -1,0 +1,52 @@
+{
+  "manifest_version": 3,
+  "name": "ScamShield",
+  "version": "1.1.0",
+  "description": "Real-time website threat scanning with protective vaccine injection.",
+  "permissions": [
+    "activeTab",
+    "scripting",
+    "storage"
+  ],
+  "host_permissions": [
+    "https://scamshield-green.vercel.app/*"
+  ],
+  "background": {
+    "service_worker": "background-script.js"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "http://*/*",
+        "https://*/*"
+      ],
+      "js": [
+        "content-script.js"
+      ],
+      "run_at": "document_start"
+    }
+  ],
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "ScamShield — Scan for threats",
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "48": "icons/icon48.png",
+      "128": "icons/icon128.png"
+    }
+  },
+  "icons": {
+    "16": "icons/icon16.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  },
+  "content_security_policy": {
+    "extension_pages": "script-src 'self'; object-src 'none';"
+  },
+  "browser_specific_settings": {
+    "gecko": {
+      "id": "scamshield@extension",
+      "strict_min_version": "109.0"
+    }
+  }
+}
