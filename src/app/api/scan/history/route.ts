@@ -6,6 +6,7 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { createServiceRoleClient } from "@/lib/supabase/client";
+import { getUserFromRequest } from "@/lib/auth-helpers";
 
 export async function GET(req: NextRequest) {
   try {
@@ -14,18 +15,17 @@ export async function GET(req: NextRequest) {
     const offset = Math.max(0, parseInt(searchParams.get("offset") ?? "0"));
     const category = searchParams.get("category");
     const threatLevel = searchParams.get("threatLevel");
-    const userId = searchParams.get("userId"); // TODO: replace with session-based userId
 
-    if (!userId) {
-      // No auth yet — return empty with helpful message
-      return NextResponse.json({
-        scans: [],
-        total: 0,
-        limit,
-        offset,
-        message: "Authentication required to retrieve scan history. Connect Supabase auth to enable.",
-      });
+    // Extract userId from session (authenticated users only)
+    const authUser = await getUserFromRequest(req);
+    if (!authUser) {
+      return NextResponse.json(
+        { error: "Authentication required to retrieve scan history." },
+        { status: 401 }
+      );
     }
+
+    const userId = authUser.id;
 
     const db = createServiceRoleClient();
 

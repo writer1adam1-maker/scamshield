@@ -585,10 +585,23 @@ export function ScanResults({
             {feedbackGiven === null ? (
               <>
                 <button
-                  onClick={() => {
+                  onClick={async () => {
                     setFeedbackGiven("fp");
-                    // TODO: Send feedback to API endpoint (e.g. POST /api/feedback)
-                    console.log("[Feedback] User reported false positive for score:", score, "category:", category);
+                    try {
+                      await fetch("/api/feedback", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({
+                          content: scannedInput,
+                          contentType: scannedInput.startsWith("http") ? "url" : "text",
+                          isScam: false,
+                          category,
+                        }),
+                      });
+                      console.log("[Feedback] False positive reported");
+                    } catch (err) {
+                      console.error("[Feedback] Error:", err);
+                    }
                   }}
                   className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border text-xs font-medium text-text-secondary hover:text-caution hover:border-caution/30 transition-colors"
                 >
@@ -596,10 +609,23 @@ export function ScanResults({
                   False positive
                 </button>
                 <button
-                  onClick={() => {
+                  onClick={async () => {
                     setFeedbackGiven("confirmed");
-                    // TODO: Send feedback to API endpoint (e.g. POST /api/feedback)
-                    console.log("[Feedback] User confirmed scam for score:", score, "category:", category);
+                    try {
+                      await fetch("/api/feedback", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({
+                          content: scannedInput,
+                          contentType: scannedInput.startsWith("http") ? "url" : "text",
+                          isScam: true,
+                          category,
+                        }),
+                      });
+                      console.log("[Feedback] Scam confirmed");
+                    } catch (err) {
+                      console.error("[Feedback] Error:", err);
+                    }
                   }}
                   className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border text-xs font-medium text-text-secondary hover:text-safe hover:border-safe/30 transition-colors"
                 >

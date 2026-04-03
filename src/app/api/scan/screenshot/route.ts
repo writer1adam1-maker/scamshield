@@ -6,6 +6,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { runVERIDICT } from "@/lib/algorithms/veridict-engine";
 import { getClientIp } from "@/lib/utils";
+import { createServiceRoleClient } from "@/lib/supabase/client";
+import { getUserFromRequest, canScan, incrementScanCount } from "@/lib/auth-helpers";
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10 MB
 const ALLOWED_TYPES = ["image/png", "image/jpeg", "image/webp", "image/gif"];
@@ -56,11 +58,23 @@ export async function POST(req: NextRequest) {
   const startTime = performance.now();
 
   try {
-    // --- Rate limiting ---
+    // --- Auth + quota check ---
     const ip = getClientIp(req);
-    // TODO: Integrate with Supabase auth to check user session, then look up
-    // the user's plan (free/pro) from the users table or Stripe subscription status.
-    const isPro = false;
+    const authUser = await getUserFromRequest(req);
+    const isPro = authUser?.plan === "pro";
+
+    // User-based quota check (if authenticated)
+    if (authUser) {
+      const quota = canScan(authUser);
+      if (!quota.allowed) {
+        return NextResponse.json(
+          { error: "Daily scan limit reached. Upgrade to Pro for unlimited scans.", remaining: 0 },
+          { status: 429 },
+        );
+      }
+    }
+
+    // IP-based rate limiting (fallback for anonymous + abuse prevention)
     const rateLimit = checkRateLimit(ip, isPro);
 
     if (!rateLimit.allowed) {
@@ -121,6 +135,13 @@ export async function POST(req: NextRequest) {
 
       const processingTimeMs = Math.round(performance.now() - startTime);
 
+      // Increment user scan counter
+      if (authUser) {
+        await incrementScanCount(authUser.id).catch(() => {
+          // Non-blocking
+        });
+      }
+
       return NextResponse.json({
         ...result,
         processingTimeMs,
@@ -136,6 +157,13 @@ export async function POST(req: NextRequest) {
     });
 
     const processingTimeMs = Math.round(performance.now() - startTime);
+
+    // Increment user scan counter
+    if (authUser) {
+      await incrementScanCount(authUser.id).catch(() => {
+        // Non-blocking
+      });
+    }
 
     return NextResponse.json(
       {

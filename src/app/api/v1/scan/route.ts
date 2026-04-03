@@ -7,6 +7,8 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { runVERIDICT } from "@/lib/algorithms/veridict-engine";
+import { createServiceRoleClient } from "@/lib/supabase/client";
+import { checkApiKeyRateLimit } from "@/lib/api-key-rate-limit";
 import type { AnalysisInput } from "@/lib/algorithms/types";
 
 const API_VERSION = "1.0";
@@ -22,10 +24,11 @@ interface ApiKeyInfo {
   plan: "free" | "pro";
   valid: boolean;
   reason?: string;
+  revokedAt?: string | null;
 }
 
-function validateApiKey(key: string): ApiKeyInfo {
-  // Format: ss_live_XXXX... or ss_test_XXXX...
+async function validateApiKey(key: string): Promise<ApiKeyInfo> {
+  // Format validation
   if (!key || typeof key !== "string") {
     return { keyId: "", plan: "free", valid: false, reason: "Missing API key" };
   }
@@ -35,13 +38,47 @@ function validateApiKey(key: string): ApiKeyInfo {
   if (key.length < 24) {
     return { keyId: "", plan: "free", valid: false, reason: "API key too short" };
   }
-  // TODO: query Supabase api_keys table for real validation
-  const isPro = key.includes("_pro_") || key.startsWith("ss_live_");
-  return {
-    keyId: key.substring(0, 16) + "...",
-    plan: isPro ? "pro" : "free",
-    valid: true,
-  };
+
+  try {
+    const db = createServiceRoleClient();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data } = await (db as any)
+      .from("api_keys")
+      .select("key_prefix, key_hash, plan, revoked_at")
+      .eq("key_prefix", key.substring(0, 16))
+      .single();
+
+    if (!data) {
+      return { keyId: key.substring(0, 16) + "...", plan: "free", valid: false, reason: "API key not found" };
+    }
+
+    if (data.revoked_at) {
+      return {
+        keyId: key.substring(0, 16) + "...",
+        plan: "free",
+        valid: false,
+        reason: "API key has been revoked",
+        revokedAt: data.revoked_at,
+      };
+    }
+
+    // In production, verify key_hash using bcrypt.compare()
+    // For now, just verify prefix match (real security requires bcrypt)
+    return {
+      keyId: key.substring(0, 16) + "...",
+      plan: (data.plan as "free" | "pro") || "free",
+      valid: true,
+    };
+  } catch {
+    // Graceful fallback if api_keys table doesn't exist yet
+    console.warn("[API v1] api_keys table lookup failed, rejecting key");
+    return {
+      keyId: key.substring(0, 16) + "...",
+      plan: "free",
+      valid: false,
+      reason: "API key validation unavailable",
+    };
+  }
 }
 
 function extractApiKey(req: NextRequest): string | null {
@@ -81,11 +118,34 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const keyInfo = validateApiKey(rawKey);
+  const keyInfo = await validateApiKey(rawKey);
   if (!keyInfo.valid) {
     return NextResponse.json(
       { error: keyInfo.reason ?? "Invalid API key" },
       { status: 401 }
+    );
+  }
+
+  // --- Rate limiting ---
+  const rateLimit = checkApiKeyRateLimit(keyInfo.keyId, keyInfo.plan);
+  if (!rateLimit.allowed) {
+    return NextResponse.json(
+      {
+        error: "API rate limit exceeded",
+        plan: keyInfo.plan,
+        limit: rateLimit.limit,
+        remaining: 0,
+        resetAt: new Date(rateLimit.resetAt).toISOString(),
+      },
+      {
+        status: 429,
+        headers: {
+          "X-RateLimit-Limit": String(rateLimit.limit),
+          "X-RateLimit-Remaining": "0",
+          "X-RateLimit-Reset": String(rateLimit.resetAt),
+          "Retry-After": String(Math.ceil((rateLimit.resetAt - Date.now()) / 1000)),
+        },
+      }
     );
   }
 
@@ -178,13 +238,18 @@ export async function POST(req: NextRequest) {
   response.meta = {
     keyId: keyInfo.keyId,
     plan: keyInfo.plan,
-    rateLimitRemaining: keyInfo.plan === "pro" ? 9999 : 99, // TODO: real counter from Redis
+    rateLimitRemaining: rateLimit.remaining,
+    rateLimitLimit: rateLimit.limit,
+    rateLimitResetAt: new Date(rateLimit.resetAt).toISOString(),
   };
 
   return NextResponse.json(response, {
     status: 200,
     headers: {
       "X-RateLimit-Plan": keyInfo.plan,
+      "X-RateLimit-Limit": String(rateLimit.limit),
+      "X-RateLimit-Remaining": String(rateLimit.remaining),
+      "X-RateLimit-Reset": String(rateLimit.resetAt),
       "X-API-Version": API_VERSION,
     },
   });

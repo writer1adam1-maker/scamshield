@@ -6,6 +6,8 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { createServiceRoleClient } from "@/lib/supabase/client";
+import { getClientIp } from "@/lib/utils";
+import crypto from "crypto";
 
 interface FeedbackRequest {
   content: string;              // The URL or text being reported
@@ -43,6 +45,10 @@ export async function POST(req: NextRequest) {
       ? details.substring(0, 500).replace(/[<>]/g, "")
       : null;
 
+    // Hash client IP for spam detection (never store raw IP)
+    const ip = getClientIp(req);
+    const ipHash = ip ? crypto.createHash("sha256").update(ip).digest("hex") : null;
+
     // Persist to Supabase community_reports table
     // (table created via migration — graceful fallback if not yet migrated)
     try {
@@ -54,7 +60,7 @@ export async function POST(req: NextRequest) {
         is_scam: isScam,
         category: category ?? null,
         details: sanitizedDetails,
-        ip_hash: null, // TODO: hash IP for spam detection
+        ip_hash: ipHash,
         created_at: new Date().toISOString(),
       });
     } catch {
