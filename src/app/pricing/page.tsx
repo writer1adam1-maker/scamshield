@@ -3,17 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import {
-  Shield,
-  Zap,
-  Check,
-  X,
-  ChevronDown,
-  ChevronUp,
-  Star,
-  Lock,
-  Crown,
-  Building2,
-  Users,
+  Shield, Zap, Check, X, ChevronDown, ChevronUp, Lock, Crown, Building2, Users, Gift,
 } from "lucide-react";
 
 const PLANS = [
@@ -23,19 +13,18 @@ const PLANS = [
     icon: Shield,
     monthlyPrice: 0,
     annualPrice: 0,
-    scansLabel: "50 scans/month · +1/day",
+    scansLabel: "50 scans / 30 days",
     description: "For occasional scam checking. No card needed.",
     highlight: null,
     color: "text-text-secondary",
     features: [
-      "50 scans/month",
-      "+1 scan/day replenishment",
+      "50 scans per 30 days",
       "URL, text & screenshot scanning",
       "VERIDICT threat analysis",
       "Scam pattern database",
-      "Referral bonuses",
+      "Earn bonus scans via referrals",
     ],
-    notIncluded: ["Scan history", "API access", "Bulk scanning", "Priority speed"],
+    notIncluded: ["Scan history", "API access", "Bulk scanning"],
   },
   {
     id: "starter",
@@ -43,62 +32,38 @@ const PLANS = [
     icon: Zap,
     monthlyPrice: 4.99,
     annualPrice: 3.99,
-    scansLabel: "300 scans/month · +10/day",
-    description: "For individuals who check links regularly.",
+    scansLabel: "200 scans / 30 days",
+    description: "For people who check links regularly.",
     highlight: null,
     color: "text-shield",
     features: [
-      "300 scans/month",
-      "+10 scans/day replenishment",
+      "200 scans per 30 days",
       "Full scan history & dashboard",
       "VERIDICT + WHOIS/SSL analysis",
       "IP intelligence checks",
-      "Referral bonuses",
+      "Earn bonus scans via referrals",
     ],
     notIncluded: ["API access", "Bulk scanning"],
-  },
-  {
-    id: "plus",
-    name: "Plus",
-    icon: Star,
-    monthlyPrice: 8.99,
-    annualPrice: 7.49,
-    scansLabel: "1,000 scans/month · +35/day",
-    description: "For power users and small teams.",
-    highlight: "MOST POPULAR",
-    color: "text-yellow-400",
-    features: [
-      "1,000 scans/month",
-      "+35 scans/day replenishment",
-      "Full scan history & dashboard",
-      "All analysis engines",
-      "Bulk scan (up to 20)",
-      "Priority analysis speed",
-      "Referral bonuses",
-    ],
-    notIncluded: ["API access"],
   },
   {
     id: "pro",
     name: "Pro",
     icon: Crown,
-    monthlyPrice: 14.99,
-    annualPrice: 11.99,
-    scansLabel: "2,500 scans/month · +85/day",
-    description: "For developers and security-conscious teams.",
-    highlight: null,
-    color: "text-purple-400",
+    monthlyPrice: 12.99,
+    annualPrice: 10.49,
+    scansLabel: "500 scans / 30 days",
+    description: "For power users and small businesses.",
+    highlight: "MOST POPULAR",
+    color: "text-yellow-400",
     features: [
-      "2,500 scans/month",
-      "+85 scans/day replenishment",
+      "500 scans per 30 days",
       "Full scan history & dashboard",
       "All analysis engines",
-      "Bulk scan (up to 50)",
-      "REST API access",
-      "Priority speed & support",
-      "Referral bonuses",
+      "Bulk scan (up to 20)",
+      "Priority analysis speed",
+      "Earn bonus scans via referrals",
     ],
-    notIncluded: [] as string[],
+    notIncluded: ["REST API access"],
   },
   {
     id: "business",
@@ -107,18 +72,18 @@ const PLANS = [
     monthlyPrice: 49,
     annualPrice: 39,
     scansLabel: "Unlimited scans",
-    description: "For agencies and businesses with high volume.",
+    description: "For agencies, developers, and high-volume teams.",
     highlight: null,
     color: "text-green-400",
     features: [
       "Unlimited scans",
-      "No daily limits",
+      "Full scan history & dashboard",
       "All analysis engines",
       "Bulk scan (unlimited)",
-      "Full REST API access",
+      "REST API access",
       "Priority support + SLA",
       "Team seats (up to 10)",
-      "Referral bonuses",
+      "Earn bonus scans via referrals",
     ],
     notIncluded: [] as string[],
   },
@@ -126,28 +91,28 @@ const PLANS = [
 
 const FAQ = [
   {
-    question: "How does daily replenishment work?",
-    answer: "Each day at midnight UTC, your allowance tops up by the daily amount — but stops at your monthly cap. On Starter, you get +10/day up to 300 total. Monthly caps reset on the 1st of each month. Referral bonus scans stack on top and never expire.",
+    question: "How does the 30-day rolling window work?",
+    answer: "Your scan allowance resets 30 days after you signed up (or last renewed). So if you joined on the 10th, your next reset is the 10th of the following month — not the 1st. This means you always get a full 30 days regardless of when you join.",
   },
   {
-    question: "What happens to referral bonus scans?",
-    answer: "Referral bonus scans go into a separate bonus pool that sits on top of your monthly cap. They don't expire when your month resets — they stay until you use them.",
+    question: "What are referral bonus scans?",
+    answer: "Share your referral code with a friend. When they sign up using your code, they get +20 bonus scans and you get +10. Bonus scans stack on top of your plan's allowance and never expire — they carry over when your 30-day window resets.",
+  },
+  {
+    question: "How many people can I refer?",
+    answer: "You can refer up to 5 new accounts per day. Each successful referral earns you +10 bonus scans. There's no cap on total bonus scans you can accumulate.",
   },
   {
     question: "What counts as a scan?",
-    answer: "Each submission (URL, text, email body, or screenshot) counts as one scan. Re-submitting counts as a new scan.",
+    answer: "Each submission — URL, text message, email body, or screenshot — counts as one scan. Re-submitting the same content counts as a new scan.",
   },
   {
     question: "Can I cancel anytime?",
-    answer: "Yes. All paid plans are monthly or annual with no lock-in. Cancel from Settings and keep access until your billing period ends.",
+    answer: "Yes. All paid plans are monthly or annual with no lock-in. Cancel from Settings and you keep access until your current period ends.",
   },
   {
     question: "Is the API production-ready?",
-    answer: "Yes. The REST API is available on Pro and Business plans with rate limit headers, API key auth, and JSON responses. Generate your key from Settings.",
-  },
-  {
-    question: "How accurate is the detection?",
-    answer: "VERIDICT runs 4 analysis layers: Fisher Information scoring, WHOIS/SSL checks, IP intelligence, and behavioral pattern matching. We continuously improve with community reports.",
+    answer: "Yes. The REST API is available on Business plan with API key authentication, rate limit headers, and JSON responses. Generate your key from Settings.",
   },
 ];
 
@@ -172,11 +137,8 @@ export default function PricingPage() {
       } else if (res.status === 401) {
         router.push("/login?next=/pricing");
       }
-    } catch {
-      // silent
-    } finally {
-      setUpgrading(null);
-    }
+    } catch { /* silent */ }
+    finally { setUpgrading(null); }
   }
 
   return (
@@ -187,8 +149,10 @@ export default function PricingPage() {
           Simple, Transparent Pricing
         </h1>
         <p className="text-text-secondary text-lg max-w-xl mx-auto">
-          Start free. Upgrade when you need more. Cancel anytime.
+          Flat 30-day allowances. No daily limits. Cancel anytime.
         </p>
+
+        {/* Annual toggle */}
         <div className="flex items-center justify-center gap-3 mt-6">
           <span className={`text-sm ${!annual ? "text-text-primary" : "text-text-muted"}`}>Monthly</span>
           <button
@@ -203,14 +167,16 @@ export default function PricingPage() {
             Annual <span className="ml-1 text-safe text-xs font-mono">SAVE ~20%</span>
           </span>
         </div>
+
+        {/* Referral banner */}
         <div className="inline-flex items-center gap-2 mt-4 px-4 py-2 rounded-full bg-shield/10 border border-shield/20 text-shield text-sm">
-          <Users size={14} />
-          Refer friends → they get +20 bonus scans, you get +10 per referral
+          <Gift size={14} />
+          Refer a friend → they get +20 scans, you get +10. Bonus scans never expire.
         </div>
       </div>
 
       {/* Plan cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4 max-w-7xl mx-auto px-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 max-w-5xl mx-auto px-4">
         {PLANS.map((plan) => {
           const Icon = plan.icon;
           const price = annual ? plan.annualPrice : plan.monthlyPrice;
@@ -283,30 +249,29 @@ export default function PricingPage() {
         })}
       </div>
 
-      {/* Replenishment explainer */}
+      {/* How it works */}
       <div className="max-w-2xl mx-auto px-4">
-        <div className="glass-card p-6 space-y-3">
+        <div className="glass-card p-6 space-y-4">
           <h3 className="text-base font-semibold text-text-primary flex items-center gap-2">
-            <Zap size={16} className="text-shield" />
-            How daily replenishment works
+            <Users size={16} className="text-shield" />
+            How referral bonuses work
           </h3>
-          <p className="text-sm text-text-secondary">
-            Every day at midnight UTC, your scan allowance tops up by your plan&apos;s daily amount — stopping at your monthly cap.
-            Monthly caps reset on the 1st of each month. Referral bonus scans stack on top and never expire.
-          </p>
-          <div className="grid grid-cols-3 gap-3 pt-2">
+          <div className="grid grid-cols-3 gap-3">
             {[
-              { label: "Day 1", value: "+10 scans", sub: "Starter daily top-up" },
-              { label: "Day 30", value: "300 cap hit", sub: "month ends soon" },
-              { label: "Month reset", value: "Back to 0", sub: "bonus pool stays" },
+              { step: "1", label: "Share your code", desc: "Find it in Settings after signup" },
+              { step: "2", label: "Friend signs up", desc: "They enter your code at registration" },
+              { step: "3", label: "Both get bonus scans", desc: "+20 for them, +10 for you" },
             ].map((item) => (
-              <div key={item.label} className="text-center p-3 rounded-lg bg-abyss/60 border border-border/50">
-                <div className="text-xs text-text-muted mb-1">{item.label}</div>
-                <div className="text-sm font-mono text-shield">{item.value}</div>
-                <div className="text-[10px] text-text-muted mt-1">{item.sub}</div>
+              <div key={item.step} className="text-center p-3 rounded-lg bg-abyss/60 border border-border/50">
+                <div className="w-6 h-6 rounded-full bg-shield/20 text-shield text-xs font-bold flex items-center justify-center mx-auto mb-2">{item.step}</div>
+                <div className="text-xs font-medium text-text-primary mb-1">{item.label}</div>
+                <div className="text-[10px] text-text-muted">{item.desc}</div>
               </div>
             ))}
           </div>
+          <p className="text-xs text-text-muted">
+            Bonus scans stack on top of your plan allowance and <strong className="text-text-secondary">never expire</strong> — they carry over when your 30-day window resets.
+          </p>
         </div>
       </div>
 
