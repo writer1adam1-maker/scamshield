@@ -58,13 +58,13 @@ export async function POST(req: NextRequest) {
     const authUser = await getUserFromRequest(req);
     const isPro = authUser?.plan === "pro";
 
-    // Load dynamic limits (admin-configurable)
-    const { anonLimit, registeredLimit } = await getScanLimits();
+    // Load dynamic anonymous limit (admin-configurable)
+    const { anonLimit } = await getScanLimits();
     setAnonRateLimit(anonLimit);
 
     // User-based quota check (if authenticated)
     if (authUser) {
-      const quota = canScan(authUser, registeredLimit);
+      const quota = await canScan(authUser);
       if (!quota.allowed) {
         return NextResponse.json(
           { error: "Daily scan limit reached. Upgrade to Pro for unlimited scans.", remaining: 0 },

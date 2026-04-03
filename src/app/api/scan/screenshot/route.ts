@@ -65,7 +65,7 @@ export async function POST(req: NextRequest) {
 
     // User-based quota check (if authenticated)
     if (authUser) {
-      const quota = canScan(authUser);
+      const quota = await canScan(authUser);
       if (!quota.allowed) {
         return NextResponse.json(
           { error: "Daily scan limit reached. Upgrade to Pro for unlimited scans.", remaining: 0 },

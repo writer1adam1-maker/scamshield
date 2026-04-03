@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { Shield, Mail, Lock, Eye, EyeOff, AlertTriangle, ArrowRight, Loader2, CheckCircle2 } from "lucide-react";
+import { useState, useEffect } from "react";
+import { Shield, Mail, Lock, Eye, EyeOff, AlertTriangle, ArrowRight, Loader2, CheckCircle2, Gift } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { createBrowserClient } from "@/lib/supabase/client";
@@ -10,12 +10,21 @@ export default function SignupPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [referralCode, setReferralCode] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [done, setDone] = useState(false);
+  const [pendingUserId, setPendingUserId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const router = useRouter();
+
+  // Pre-fill referral code from URL ?ref=CODE
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const ref = params.get("ref");
+    if (ref) setReferralCode(ref.toUpperCase());
+  }, []);
 
   async function handleSignup(e: React.FormEvent) {
     e.preventDefault();
@@ -33,7 +42,7 @@ export default function SignupPage() {
     setLoading(true);
 
     const supabase = createBrowserClient();
-    const { error } = await supabase.auth.signUp({
+    const { data, error } = await supabase.auth.signUp({
       email,
       password,
       options: {
@@ -45,6 +54,23 @@ export default function SignupPage() {
       setError(error.message);
       setLoading(false);
     } else {
+      // If referral code provided, redeem it after account creation
+      if (referralCode.trim() && data.user) {
+        setPendingUserId(data.user.id);
+        try {
+          const res = await fetch("/api/referral/redeem", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ code: referralCode.trim().toUpperCase() }),
+          });
+          // Non-blocking — ignore errors (user can redeem later)
+          const rData = await res.json().catch(() => ({}));
+          if (rData.bonusScans) {
+            // Show bonus in done screen
+            setPendingUserId(String(rData.bonusScans));
+          }
+        } catch { /* ignore */ }
+      }
       setDone(true);
       setLoading(false);
     }
@@ -76,6 +102,12 @@ export default function SignupPage() {
               We sent a confirmation link to <span className="text-shield font-mono">{email}</span>.
               Click it to activate your account.
             </p>
+            {pendingUserId && parseInt(pendingUserId) > 0 && (
+              <div className="flex items-center justify-center gap-2 px-4 py-2 rounded-lg bg-shield/10 border border-shield/20 text-shield text-sm">
+                <Gift size={14} />
+                Referral applied! +{pendingUserId} bonus scans added to your account.
+              </div>
+            )}
             <Link
               href="/login"
               className="inline-flex items-center gap-2 mt-4 text-sm text-shield hover:underline"
@@ -173,6 +205,25 @@ export default function SignupPage() {
                   {error}
                 </div>
               )}
+
+              {/* Referral code */}
+              <div>
+                <label className="block text-xs font-medium text-text-muted mb-1.5">
+                  Referral code <span className="text-text-muted font-normal">(optional — get +20 bonus scans)</span>
+                </label>
+                <div className="relative">
+                  <Gift size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted" />
+                  <input
+                    type="text"
+                    value={referralCode}
+                    onChange={(e) => setReferralCode(e.target.value.toUpperCase())}
+                    placeholder="e.g. AB3K9XWZ"
+                    maxLength={12}
+                    autoComplete="off"
+                    className="w-full pl-9 pr-4 py-2.5 bg-abyss/80 border border-border rounded-lg text-sm text-text-primary placeholder:text-text-muted focus:outline-none focus:border-shield/50 focus:ring-1 focus:ring-shield/20 transition-colors font-mono tracking-wider"
+                  />
+                </div>
+              </div>
 
               {/* Terms note */}
               <p className="text-xs text-text-muted">
