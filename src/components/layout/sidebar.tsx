@@ -41,7 +41,7 @@ export function Sidebar() {
   const pathname = usePathname();
   const router = useRouter();
 
-  const freeScansMax = 15;
+  const [freeScansMax, setFreeScansMax] = useState(10);
   const freeScansUsed = scanCountToday;
 
   useEffect(() => {
@@ -72,6 +72,15 @@ export function Sidebar() {
           setScanCountToday(isNewDay ? 0 : (dbUser.scan_count_today ?? 0));
           setUserPlan((dbUser.plan as "free" | "pro") ?? "free");
         }
+
+        // Load registered user scan limit from config
+        try {
+          const cfgRes = await fetch("/api/scan/limits");
+          if (cfgRes.ok) {
+            const cfg = await cfgRes.json();
+            if (cfg.registered_scan_limit) setFreeScansMax(cfg.registered_scan_limit);
+          }
+        } catch { /* use default */ }
       }
     }
 
