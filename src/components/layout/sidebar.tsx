@@ -18,6 +18,7 @@ import {
   LogOut,
   MessageSquare,
   Syringe,
+  ShieldAlert,
 } from "lucide-react";
 import clsx from "clsx";
 import { createBrowserClient } from "@/lib/supabase/client";
@@ -33,11 +34,14 @@ const navItems = [
   { href: "/settings", label: "Settings", icon: Settings },
 ];
 
+const ADMIN_EMAILS = (process.env.NEXT_PUBLIC_ADMIN_EMAILS || "").split(",").map((e) => e.trim().toLowerCase());
+
 export function Sidebar() {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [user, setUser] = useState<SupabaseUser | null>(null);
   const [scanCountToday, setScanCountToday] = useState(0);
   const [userPlan, setUserPlan] = useState<"free" | "pro">("free");
+  const [isAdmin, setIsAdmin] = useState(false);
   const pathname = usePathname();
   const router = useRouter();
 
@@ -52,6 +56,9 @@ export function Sidebar() {
       setUser(authUser);
 
       if (authUser) {
+        const adminCheck = ADMIN_EMAILS.includes((authUser.email || "").toLowerCase());
+        setIsAdmin(adminCheck);
+
         // Fetch real scan count and plan from users table
         const { data } = await supabase
           .from("users")
@@ -184,12 +191,32 @@ export function Sidebar() {
               </Link>
             );
           })}
+
+          {/* Admin-only nav item */}
+          {isAdmin && (
+            <Link
+              href="/admin"
+              onClick={() => setMobileOpen(false)}
+              className={clsx(
+                "flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 mt-2",
+                pathname.startsWith("/admin")
+                  ? "bg-yellow-400/10 text-yellow-400 border border-yellow-400/20"
+                  : "text-yellow-500/70 hover:text-yellow-400 hover:bg-yellow-400/5 border border-yellow-400/10"
+              )}
+            >
+              <ShieldAlert size={18} />
+              Admin Panel
+              {pathname.startsWith("/admin") && (
+                <div className="ml-auto w-1.5 h-1.5 rounded-full bg-yellow-400" />
+              )}
+            </Link>
+          )}
         </nav>
 
         {/* Bottom section */}
         <div className="p-4 space-y-3 border-t border-border/50">
-          {/* Usage counter — only for free plan */}
-          {userPlan === "free" && (
+          {/* Usage counter — only for free plan (not admin) */}
+          {userPlan === "free" && !isAdmin && (
             <div className="p-3 rounded-xl bg-slate-deep/40 border border-border/50">
               <div className="flex items-center justify-between mb-2">
                 <span className="text-xs font-mono text-text-muted">Scans today</span>
@@ -208,8 +235,12 @@ export function Sidebar() {
             </div>
           )}
 
-          {/* Pro badge or upgrade button */}
-          {userPlan === "pro" ? (
+          {/* Plan badge or upgrade button */}
+          {isAdmin ? (
+            <div className="p-3 rounded-xl bg-yellow-400/5 border border-yellow-400/20 text-center">
+              <span className="text-xs font-mono text-yellow-400">Ultimate Plan — Admin Access</span>
+            </div>
+          ) : userPlan === "pro" ? (
             <div className="p-3 rounded-xl bg-safe/5 border border-safe/20 text-center">
               <span className="text-xs font-mono text-safe">Pro Plan — Unlimited Scans</span>
             </div>
@@ -231,7 +262,9 @@ export function Sidebar() {
               </div>
               <div className="flex-1 min-w-0">
                 <div className="text-xs text-text-secondary truncate">{user.email}</div>
-                <div className="text-[10px] font-mono text-text-muted">Free plan</div>
+                <div className="text-[10px] font-mono text-text-muted">
+                  {isAdmin ? "Ultimate" : userPlan === "pro" ? "Pro plan" : "Free plan"}
+                </div>
               </div>
               <button
                 onClick={handleSignOut}
