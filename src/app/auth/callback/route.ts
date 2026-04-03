@@ -13,8 +13,11 @@ export async function GET(request: NextRequest) {
   const next = searchParams.get("next") ?? "/dashboard";
   const error = searchParams.get("error");
 
+  // Always redirect to the canonical domain, never to a Vercel preview URL
+  const siteUrl = process.env.NEXT_PUBLIC_APP_URL || origin;
+
   if (error) {
-    return NextResponse.redirect(`${origin}/login?error=${encodeURIComponent(error)}`);
+    return NextResponse.redirect(`${siteUrl}/login?error=${encodeURIComponent(error)}`);
   }
 
   if (code) {
@@ -40,11 +43,11 @@ export async function GET(request: NextRequest) {
     const { error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
 
     if (!exchangeError) {
-      return NextResponse.redirect(`${origin}${next}`);
+      return NextResponse.redirect(`${siteUrl}${next}`);
     }
 
     console.error("[Auth Callback] Exchange error:", exchangeError.message);
   }
 
-  return NextResponse.redirect(`${origin}/login?error=auth_failed`);
+  return NextResponse.redirect(`${siteUrl}/login?error=auth_failed`);
 }
