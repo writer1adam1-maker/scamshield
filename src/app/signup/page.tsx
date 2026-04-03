@@ -105,7 +105,7 @@ export default function SignupPage() {
             {pendingUserId && parseInt(pendingUserId) > 0 && (
               <div className="flex items-center justify-center gap-2 px-4 py-2 rounded-lg bg-shield/10 border border-shield/20 text-shield text-sm">
                 <Gift size={14} />
-                Referral applied! +{pendingUserId} bonus scans added to your account.
+                Referral applied! +10 bonus scans added to your account.
               </div>
             )}
             <Link
@@ -209,7 +209,7 @@ export default function SignupPage() {
               {/* Referral code */}
               <div>
                 <label className="block text-xs font-medium text-text-muted mb-1.5">
-                  Referral code <span className="text-text-muted font-normal">(optional — get +20 bonus scans)</span>
+                  Referral code <span className="text-text-muted font-normal">(optional — get +10 bonus scans)</span>
                 </label>
                 <div className="relative">
                   <Gift size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted" />

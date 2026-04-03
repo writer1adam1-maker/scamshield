@@ -171,7 +171,7 @@ export default function PricingPage() {
         {/* Referral banner */}
         <div className="inline-flex items-center gap-2 mt-4 px-4 py-2 rounded-full bg-shield/10 border border-shield/20 text-shield text-sm">
           <Gift size={14} />
-          Refer a friend → they get +20 scans, you get +10. Bonus scans never expire.
+          Refer a friend → they get +10 scans, you get +10. Bonus scans never expire.
         </div>
       </div>
 
@@ -260,7 +260,7 @@ export default function PricingPage() {
             {[
               { step: "1", label: "Share your code", desc: "Find it in Settings after signup" },
               { step: "2", label: "Friend signs up", desc: "They enter your code at registration" },
-              { step: "3", label: "Both get bonus scans", desc: "+20 for them, +10 for you" },
+              { step: "3", label: "Both get bonus scans", desc: "+10 for them, +10 for you" },
             ].map((item) => (
               <div key={item.step} className="text-center p-3 rounded-lg bg-abyss/60 border border-border/50">
                 <div className="w-6 h-6 rounded-full bg-shield/20 text-shield text-xs font-bold flex items-center justify-center mx-auto mb-2">{item.step}</div>

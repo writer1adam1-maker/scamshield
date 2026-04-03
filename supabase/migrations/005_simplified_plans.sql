@@ -18,7 +18,7 @@ insert into public.app_config (key, value) values
   ('starter_rolling_limit',  '200'),
   ('pro_rolling_limit',      '500'),
   ('referrer_bonus_scans',   '10'),
-  ('referred_bonus_scans',   '20'),
+  ('referred_bonus_scans',   '10'),
   ('max_referrals_per_day',  '5'),
   ('anonymous_scan_limit',   '4')
 on conflict (key) do update set value = excluded.value, updated_at = now();

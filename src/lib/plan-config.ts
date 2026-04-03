@@ -22,7 +22,7 @@ export const PLAN_DEFAULTS: Record<Plan, PlanLimits> = {
 
 export const REFERRAL_DEFAULTS = {
   referrerBonus: 10, // scans referrer earns per successful referral
-  referredBonus: 20, // bonus scans new member gets at signup
+  referredBonus: 10, // bonus scans new member gets at signup
   maxPerDay: 5,      // max referrals a single user can make per day
 };
 
