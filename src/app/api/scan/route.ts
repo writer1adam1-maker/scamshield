@@ -9,7 +9,8 @@ import { getClientIp } from "@/lib/utils";
 import { createServiceRoleClient } from "@/lib/supabase/client";
 import { enrichUrlWithWhoisSsl } from "@/lib/whois-ssl";
 import { analyzeUrlIp } from "@/lib/ip-intelligence";
-import { getUserFromRequest, canScan, incrementScanCount } from "@/lib/auth-helpers";
+import { getUserFromRequest, canScan, incrementScanCount, getScanLimits } from "@/lib/auth-helpers";
+import { setAnonRateLimit } from "@/lib/rate-limit";
 import type { AnalysisInput } from "@/lib/algorithms/types";
 
 interface ScanRequest {
@@ -57,9 +58,13 @@ export async function POST(req: NextRequest) {
     const authUser = await getUserFromRequest(req);
     const isPro = authUser?.plan === "pro";
 
+    // Load dynamic limits (admin-configurable)
+    const { anonLimit, registeredLimit } = await getScanLimits();
+    setAnonRateLimit(anonLimit);
+
     // User-based quota check (if authenticated)
     if (authUser) {
-      const quota = canScan(authUser);
+      const quota = canScan(authUser, registeredLimit);
       if (!quota.allowed) {
         return NextResponse.json(
           { error: "Daily scan limit reached. Upgrade to Pro for unlimited scans.", remaining: 0 },

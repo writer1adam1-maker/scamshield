@@ -14,8 +14,48 @@ export interface AuthUser {
   scanCountTotal: number;
 }
 
-const FREE_SCAN_LIMIT = 15;
+export const ANONYMOUS_SCAN_LIMIT_DEFAULT = 4;
+export const REGISTERED_SCAN_LIMIT_DEFAULT = 10;
 const PRO_SCAN_LIMIT = 999999;
+
+// In-process cache for admin-configurable limits (refreshed every 60s)
+let _dynamicAnonLimit: number | null = null;
+let _dynamicRegisteredLimit: number | null = null;
+let _limitsLoadedAt = 0;
+
+async function getDynamicLimits(): Promise<{ anonLimit: number; registeredLimit: number }> {
+  const now = Date.now();
+  if (now - _limitsLoadedAt < 60_000 && _dynamicAnonLimit !== null) {
+    return { anonLimit: _dynamicAnonLimit, registeredLimit: _dynamicRegisteredLimit! };
+  }
+  try {
+    const db = createServiceRoleClient();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data } = await (db as any)
+      .from("app_config")
+      .select("key, value")
+      .in("key", ["anonymous_scan_limit", "registered_scan_limit"]);
+    if (data) {
+      for (const row of data as { key: string; value: string }[]) {
+        const n = parseInt(row.value, 10);
+        if (!isNaN(n)) {
+          if (row.key === "anonymous_scan_limit") _dynamicAnonLimit = n;
+          if (row.key === "registered_scan_limit") _dynamicRegisteredLimit = n;
+        }
+      }
+    }
+  } catch {
+    // Fall back to defaults
+  }
+  if (!_dynamicAnonLimit) _dynamicAnonLimit = ANONYMOUS_SCAN_LIMIT_DEFAULT;
+  if (!_dynamicRegisteredLimit) _dynamicRegisteredLimit = REGISTERED_SCAN_LIMIT_DEFAULT;
+  _limitsLoadedAt = now;
+  return { anonLimit: _dynamicAnonLimit, registeredLimit: _dynamicRegisteredLimit };
+}
+
+export async function getScanLimits() {
+  return getDynamicLimits();
+}
 
 /**
  * Extract authenticated user from request cookies.
@@ -65,14 +105,18 @@ export async function getUserFromRequest(req: NextRequest): Promise<AuthUser | n
 
 /**
  * Check if user can perform a scan based on plan and daily quota.
+ * registeredLimit must be passed in (fetched async via getScanLimits).
  */
-export function canScan(user: AuthUser | null): { allowed: boolean; remaining: number; limit: number } {
+export function canScan(
+  user: AuthUser | null,
+  registeredLimit: number = REGISTERED_SCAN_LIMIT_DEFAULT,
+): { allowed: boolean; remaining: number; limit: number } {
   if (!user) {
-    // Anonymous users get a limited allowance (tracked by IP in rate-limit.ts)
-    return { allowed: true, remaining: FREE_SCAN_LIMIT, limit: FREE_SCAN_LIMIT };
+    // Anonymous users — tracked by IP in rate-limit.ts; return defaults here
+    return { allowed: true, remaining: ANONYMOUS_SCAN_LIMIT_DEFAULT, limit: ANONYMOUS_SCAN_LIMIT_DEFAULT };
   }
 
-  const limit = user.plan === "pro" ? PRO_SCAN_LIMIT : FREE_SCAN_LIMIT;
+  const limit = user.plan === "pro" ? PRO_SCAN_LIMIT : registeredLimit;
   const remaining = Math.max(0, limit - user.scanCountToday);
 
   return {

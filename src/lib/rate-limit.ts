@@ -15,7 +15,9 @@ interface RateLimitEntry {
   createdAt: number; // Unix timestamp (ms) when this entry was created
 }
 
-const FREE_TIER_LIMIT = 15;
+// Default anonymous limit — overridden at runtime via setAnonRateLimit()
+let _anonLimit = 4;
+export function setAnonRateLimit(n: number) { _anonLimit = n; }
 const MAX_STORE_SIZE = 10_000;
 const store = new Map<string, RateLimitEntry>();
 
@@ -92,13 +94,13 @@ export function checkRateLimit(ip: string, isPro: boolean): RateLimitResult {
     if (oldestKey) store.delete(oldestKey);
   }
 
-  const remaining = Math.max(0, FREE_TIER_LIMIT - entry.count);
+  const remaining = Math.max(0, _anonLimit - entry.count);
 
-  if (entry.count >= FREE_TIER_LIMIT) {
+  if (entry.count >= _anonLimit) {
     return {
       allowed: false,
       remaining: 0,
-      limit: FREE_TIER_LIMIT,
+      limit: _anonLimit,
       resetAt: entry.resetAt,
     };
   }
@@ -108,8 +110,8 @@ export function checkRateLimit(ip: string, isPro: boolean): RateLimitResult {
 
   return {
     allowed: true,
-    remaining: FREE_TIER_LIMIT - entry.count,
-    limit: FREE_TIER_LIMIT,
+    remaining: _anonLimit - entry.count,
+    limit: _anonLimit,
     resetAt: entry.resetAt,
   };
 }
