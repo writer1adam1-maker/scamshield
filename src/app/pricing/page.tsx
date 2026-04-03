@@ -24,17 +24,16 @@ interface PlanFeature {
 }
 
 const FEATURES: PlanFeature[] = [
-  { name: "Scam detection scans", free: "5 per day", pro: "Unlimited" },
+  { name: "Scam detection scans", free: "15 per day", pro: "Unlimited" },
   { name: "VERIDICT 4-layer analysis", free: true, pro: true },
+  { name: "SYNERGOS behavioral analysis", free: true, pro: true },
   { name: "Threat score & evidence", free: true, pro: true },
+  { name: "Website Vaccine (phishing protection)", free: true, pro: true },
   { name: "Scam pattern database", free: true, pro: true },
+  { name: "Full scan history & dashboard", free: false, pro: true },
+  { name: "API access (REST)", free: false, pro: true },
+  { name: "Bulk scan (up to 50)", free: false, pro: true },
   { name: "Priority analysis speed", free: false, pro: true },
-  { name: "Full scan history", free: false, pro: true },
-  { name: "API access", free: false, pro: true },
-  { name: "Email threat alerts", free: false, pro: true },
-  { name: "Bulk scan (up to 100)", free: false, pro: true },
-  { name: "Export reports (PDF)", free: false, pro: true },
-  { name: "Custom scam patterns", free: false, pro: true },
   { name: "Priority support", free: false, pro: true },
 ];
 

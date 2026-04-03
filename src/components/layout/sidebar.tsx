@@ -36,17 +36,50 @@ const navItems = [
 export function Sidebar() {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [user, setUser] = useState<SupabaseUser | null>(null);
+  const [scanCountToday, setScanCountToday] = useState(0);
+  const [userPlan, setUserPlan] = useState<"free" | "pro">("free");
   const pathname = usePathname();
   const router = useRouter();
 
-  const freeScansUsed = 2;
   const freeScansMax = 15;
+  const freeScansUsed = scanCountToday;
 
   useEffect(() => {
     const supabase = createBrowserClient();
-    supabase.auth.getUser().then(({ data }) => setUser(data.user));
+
+    async function loadUser() {
+      const { data: { user: authUser } } = await supabase.auth.getUser();
+      setUser(authUser);
+
+      if (authUser) {
+        // Fetch real scan count and plan from users table
+        const { data } = await supabase
+          .from("users")
+          .select("scan_count_today, plan, updated_at")
+          .eq("id", authUser.id)
+          .single();
+
+        const dbUser = data as { scan_count_today?: number; plan?: string; updated_at?: string } | null;
+        if (dbUser) {
+          // Reset daily count if it's a new UTC day
+          const lastUpdate = new Date(dbUser.updated_at || 0);
+          const now = new Date();
+          const isNewDay =
+            lastUpdate.getUTCFullYear() !== now.getUTCFullYear() ||
+            lastUpdate.getUTCMonth() !== now.getUTCMonth() ||
+            lastUpdate.getUTCDate() !== now.getUTCDate();
+
+          setScanCountToday(isNewDay ? 0 : (dbUser.scan_count_today ?? 0));
+          setUserPlan((dbUser.plan as "free" | "pro") ?? "free");
+        }
+      }
+    }
+
+    loadUser();
+
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setUser(session?.user ?? null);
+      if (session?.user) loadUser();
     });
     return () => subscription.unsubscribe();
   }, []);
@@ -146,32 +179,40 @@ export function Sidebar() {
 
         {/* Bottom section */}
         <div className="p-4 space-y-3 border-t border-border/50">
-          {/* Usage counter */}
-          <div className="p-3 rounded-xl bg-slate-deep/40 border border-border/50">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-xs font-mono text-text-muted">Free scans today</span>
-              <span className="text-xs font-mono text-shield">
-                {freeScansUsed}/{freeScansMax}
-              </span>
+          {/* Usage counter — only for free plan */}
+          {userPlan === "free" && (
+            <div className="p-3 rounded-xl bg-slate-deep/40 border border-border/50">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-xs font-mono text-text-muted">Scans today</span>
+                <span className={`text-xs font-mono ${freeScansUsed >= freeScansMax ? "text-danger" : "text-shield"}`}>
+                  {freeScansUsed}/{freeScansMax}
+                </span>
+              </div>
+              <div className="w-full h-1.5 rounded-full bg-obsidian overflow-hidden">
+                <div
+                  className={`h-full rounded-full transition-all duration-500 ${freeScansUsed >= freeScansMax ? "bg-danger" : "bg-shield"}`}
+                  style={{
+                    width: `${Math.min(100, (freeScansUsed / freeScansMax) * 100)}%`,
+                  }}
+                />
+              </div>
             </div>
-            <div className="w-full h-1.5 rounded-full bg-obsidian overflow-hidden">
-              <div
-                className="h-full rounded-full bg-shield transition-all duration-500"
-                style={{
-                  width: `${(freeScansUsed / freeScansMax) * 100}%`,
-                }}
-              />
-            </div>
-          </div>
+          )}
 
-          {/* Upgrade button */}
-          <Link
-            href="/pricing"
-            className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-shield/10 border border-shield/20 text-shield text-sm font-semibold hover:bg-shield/15 transition-all shield-glow"
-          >
-            <Zap size={14} />
-            Upgrade to Pro
-          </Link>
+          {/* Pro badge or upgrade button */}
+          {userPlan === "pro" ? (
+            <div className="p-3 rounded-xl bg-safe/5 border border-safe/20 text-center">
+              <span className="text-xs font-mono text-safe">Pro Plan — Unlimited Scans</span>
+            </div>
+          ) : (
+            <Link
+              href="/pricing"
+              className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-shield/10 border border-shield/20 text-shield text-sm font-semibold hover:bg-shield/15 transition-all shield-glow"
+            >
+              <Zap size={14} />
+              Upgrade to Pro
+            </Link>
+          )}
 
           {/* User section */}
           {user ? (

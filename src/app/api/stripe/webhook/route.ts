@@ -105,9 +105,9 @@ export async function POST(request: NextRequest) {
       }
 
       case "invoice.payment_failed": {
-        // Stripe v21: Invoice.parent contains subscription context
-        const invoice = event.data.object as Stripe.Invoice & { parent?: { subscription_details?: { subscription?: string } } };
-        const subId = invoice.parent?.subscription_details?.subscription ?? null;
+        // Extract subscription ID from invoice — Stripe puts it directly on the invoice object
+        const invoice = event.data.object as Stripe.Invoice;
+        const subId = (invoice as any).subscription as string | null;
 
         if (subId) {
           // eslint-disable-next-line @typescript-eslint/no-explicit-any

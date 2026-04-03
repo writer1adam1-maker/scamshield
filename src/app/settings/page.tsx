@@ -9,18 +9,36 @@ import type { User as SupabaseUser } from "@supabase/supabase-js";
 export default function SettingsPage() {
   const [notifications, setNotifications] = useState(true);
   const [user, setUser] = useState<SupabaseUser | null>(null);
+  const [userPlan, setUserPlan] = useState<"free" | "pro">("free");
+  const [scanCountTotal, setScanCountTotal] = useState(0);
   const [loadingUser, setLoadingUser] = useState(true);
   const [signingOut, setSigningOut] = useState(false);
+  const [deletingAccount, setDeletingAccount] = useState(false);
   const [passwordResetSent, setPasswordResetSent] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState(false);
   const router = useRouter();
 
   useEffect(() => {
     const supabase = createBrowserClient();
-    supabase.auth.getUser().then(({ data }) => {
-      setUser(data.user);
+    async function load() {
+      const { data: { user: authUser } } = await supabase.auth.getUser();
+      setUser(authUser);
+
+      if (authUser) {
+        const { data } = await supabase
+          .from("users")
+          .select("plan, scan_count_total")
+          .eq("id", authUser.id)
+          .single();
+        const dbUser = data as { plan?: string; scan_count_total?: number } | null;
+        if (dbUser) {
+          setUserPlan((dbUser.plan as "free" | "pro") ?? "free");
+          setScanCountTotal(dbUser.scan_count_total ?? 0);
+        }
+      }
       setLoadingUser(false);
-    });
+    }
+    load();
   }, []);
 
   async function handleSignOut() {
@@ -83,14 +101,23 @@ export default function SettingsPage() {
             <div className="flex items-center justify-between p-3 rounded-lg bg-abyss/60 border border-border/40">
               <div>
                 <p className="text-xs text-text-muted mb-0.5">Current plan</p>
-                <p className="text-sm font-semibold text-text-primary">Free</p>
+                <p className={`text-sm font-semibold ${userPlan === "pro" ? "text-safe" : "text-text-primary"}`}>
+                  {userPlan === "pro" ? "Pro" : "Free"}
+                </p>
+                <p className="text-[10px] text-text-muted mt-0.5">{scanCountTotal} total scans</p>
               </div>
-              <a
-                href="/pricing"
-                className="px-3 py-1 rounded-lg bg-shield/10 border border-shield/20 text-shield text-xs font-semibold hover:bg-shield/15 transition-colors"
-              >
-                Upgrade
-              </a>
+              {userPlan === "pro" ? (
+                <span className="px-3 py-1 rounded-lg bg-safe/10 border border-safe/20 text-safe text-xs font-semibold">
+                  Active
+                </span>
+              ) : (
+                <a
+                  href="/pricing"
+                  className="px-3 py-1 rounded-lg bg-shield/10 border border-shield/20 text-shield text-xs font-semibold hover:bg-shield/15 transition-colors"
+                >
+                  Upgrade
+                </a>
+              )}
             </div>
 
             {/* Password reset */}
@@ -219,11 +246,23 @@ export default function SettingsPage() {
                 <span className="text-xs text-danger">Are you sure?</span>
                 <button
                   onClick={async () => {
-                    // TODO: call server action to delete user via admin API
-                    alert("Account deletion requires server-side implementation. Contact support.");
-                    setDeleteConfirm(false);
+                    setDeletingAccount(true);
+                    try {
+                      const supabase = createBrowserClient();
+                      // Delete user data from public.users (cascades to scans, api_keys)
+                      await supabase.from("users").delete().eq("id", user!.id);
+                      // Sign out (auth.users row deleted via cascade from public.users FK)
+                      await supabase.auth.signOut();
+                      router.push("/");
+                      router.refresh();
+                    } catch {
+                      alert("Failed to delete account. Please try again or contact support.");
+                      setDeletingAccount(false);
+                      setDeleteConfirm(false);
+                    }
                   }}
-                  className="px-3 py-1.5 rounded-lg bg-danger/20 border border-danger/30 text-danger text-xs font-semibold"
+                  disabled={deletingAccount}
+                  className="px-3 py-1.5 rounded-lg bg-danger/20 border border-danger/30 text-danger text-xs font-semibold disabled:opacity-60"
                 >
                   Yes, delete
                 </button>

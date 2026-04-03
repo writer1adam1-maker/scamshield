@@ -9,6 +9,7 @@ import { getClientIp } from "@/lib/utils";
 import { createServiceRoleClient } from "@/lib/supabase/client";
 import { enrichUrlWithWhoisSsl } from "@/lib/whois-ssl";
 import { analyzeUrlIp } from "@/lib/ip-intelligence";
+import { getUserFromRequest, canScan, incrementScanCount } from "@/lib/auth-helpers";
 import type { AnalysisInput } from "@/lib/algorithms/types";
 
 interface ScanRequest {
@@ -51,14 +52,24 @@ export async function POST(req: NextRequest) {
   console.log("[/api/scan] Request received");
 
   try {
-    // --- Rate limiting ---
+    // --- Auth + quota check ---
     const ip = getClientIp(req);
-    console.log("[/api/scan] Client IP:", ip);
-    // TODO: Integrate with Supabase auth to check user session, then look up
-    // the user's plan (free/pro) from the users table or Stripe subscription status.
-    const isPro = false;
+    const authUser = await getUserFromRequest(req);
+    const isPro = authUser?.plan === "pro";
+
+    // User-based quota check (if authenticated)
+    if (authUser) {
+      const quota = canScan(authUser);
+      if (!quota.allowed) {
+        return NextResponse.json(
+          { error: "Daily scan limit reached. Upgrade to Pro for unlimited scans.", remaining: 0 },
+          { status: 429 },
+        );
+      }
+    }
+
+    // IP-based rate limiting (fallback for anonymous + abuse prevention)
     const rateLimit = checkRateLimit(ip, isPro);
-    console.log("[/api/scan] Rate limit check — allowed:", rateLimit.allowed, "remaining:", rateLimit.remaining);
 
     if (!rateLimit.allowed) {
       return NextResponse.json(
@@ -171,12 +182,12 @@ export async function POST(req: NextRequest) {
 
     const processingTimeMs = Math.round(performance.now() - startTime);
 
-    // --- Persist scan result (fire and forget) ---
+    // --- Persist scan result + increment user quota ---
     try {
       const db = createServiceRoleClient();
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       await (db as any).from("scans").insert({
-        user_id: null, // TODO: populate from session when auth is wired
+        user_id: authUser?.id ?? null,
         input_type: body.type,
         input_preview: body.content.trim().substring(0, 200),
         score: result.score,
@@ -186,6 +197,11 @@ export async function POST(req: NextRequest) {
         ip_address: ip ?? null,
         created_at: new Date().toISOString(),
       });
+
+      // Increment user scan counter
+      if (authUser) {
+        await incrementScanCount(authUser.id);
+      }
     } catch {
       // Non-blocking — scan result still returned even if persistence fails
     }

@@ -14,6 +14,7 @@ import { VaccineManager } from "@/lib/vaccine/vaccine-manager";
 import { validateUrl, sanitizeUrlForLog } from "@/lib/vaccine/url-validator";
 import { signPayload } from "@/lib/vaccine/payload-signer";
 import { checkRateLimit } from "@/lib/vaccine/rate-limiter";
+import { getUserFromRequest, canScan, incrementScanCount } from "@/lib/auth-helpers";
 
 const vaccineManager = new VaccineManager();
 
@@ -60,7 +61,18 @@ export async function POST(req: NextRequest) {
     }
 
     const safeUrl = urlValidation.sanitizedUrl;
-    console.log(`[/api/vaccine/scan] Scanning: ${sanitizeUrlForLog(safeUrl)} (IP: ${ip})`);
+
+    // --- Auth + quota check ---
+    const authUser = await getUserFromRequest(req);
+    if (authUser) {
+      const quota = canScan(authUser);
+      if (!quota.allowed) {
+        return NextResponse.json(
+          { error: "Daily scan limit reached. Upgrade to Pro for unlimited scans." },
+          { status: 429 }
+        );
+      }
+    }
 
     // --- Optional VERIDICT score (validate range) ---
     let vericticScore: number | undefined;
@@ -81,6 +93,11 @@ export async function POST(req: NextRequest) {
     // --- Sign injection rules payload ---
     const rulesPayload = JSON.stringify(report.injectionRules);
     const signed = await signPayload(rulesPayload);
+
+    // --- Increment scan count for authenticated users ---
+    if (authUser) {
+      await incrementScanCount(authUser.id);
+    }
 
     // --- Build sanitized response (don't expose internal details) ---
     const response = {

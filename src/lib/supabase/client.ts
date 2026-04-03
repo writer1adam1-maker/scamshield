@@ -31,7 +31,8 @@ export interface DbUser {
   plan: "free" | "pro";
   stripe_customer_id: string | null;
   stripe_subscription_id: string | null;
-  scans_today: number;
+  scan_count_today: number;
+  scan_count_total: number;
   created_at: string;
   updated_at: string;
 }

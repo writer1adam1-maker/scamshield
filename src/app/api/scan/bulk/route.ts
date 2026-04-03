@@ -7,6 +7,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { runVERIDICT } from "@/lib/algorithms/veridict-engine";
 import { getClientIp } from "@/lib/utils";
+import { getUserFromRequest } from "@/lib/auth-helpers";
 import type { AnalysisInput } from "@/lib/algorithms/types";
 
 const MAX_ITEMS_FREE = 5;
@@ -50,9 +51,18 @@ export async function POST(req: NextRequest) {
 
     const { items } = body as BulkScanRequest;
 
-    // TODO: integrate Supabase auth — isPro from session
-    const isPro = false;
-    const maxItems = isPro ? MAX_ITEMS_PRO : MAX_ITEMS_FREE;
+    // Auth check — bulk scan requires Pro plan
+    const authUser = await getUserFromRequest(req);
+    const isPro = authUser?.plan === "pro";
+
+    if (!isPro) {
+      return NextResponse.json(
+        { error: "Bulk scanning requires a Pro plan.", upgradeUrl: "/pricing" },
+        { status: 403 }
+      );
+    }
+
+    const maxItems = MAX_ITEMS_PRO;
 
     if (items.length === 0) {
       return NextResponse.json({ error: "items array cannot be empty" }, { status: 400 });
