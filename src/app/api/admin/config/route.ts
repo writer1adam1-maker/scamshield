@@ -1,6 +1,6 @@
 // ============================================================================
 // GET /api/admin/config — Get current scan limit config
-// POST /api/admin/config — Update scan limits
+// POST /api/admin/config — Update scan limits (any of the allowed keys)
 // ============================================================================
 
 import { NextRequest, NextResponse } from "next/server";
@@ -22,6 +22,16 @@ async function requireAdmin(req: NextRequest): Promise<boolean> {
   } catch { return false; }
 }
 
+const ALLOWED_KEYS = [
+  "anonymous_scan_limit",
+  "free_rolling_limit",
+  "starter_rolling_limit",
+  "pro_rolling_limit",
+  "team_rolling_limit",
+  "organization_rolling_limit",
+  "enterprise_rolling_limit",
+] as const;
+
 export async function GET(req: NextRequest) {
   if (!(await requireAdmin(req))) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
@@ -30,10 +40,13 @@ export async function GET(req: NextRequest) {
   const { data } = await (db as any).from("app_config").select("key, value");
 
   const config: Record<string, number> = {
-    anonymous_scan_limit: ANONYMOUS_SCAN_LIMIT_DEFAULT,
-    free_rolling_limit:     PLAN_DEFAULTS.free.rollingLimit,
-    starter_rolling_limit:  PLAN_DEFAULTS.starter.rollingLimit,
-    pro_rolling_limit:      PLAN_DEFAULTS.pro.rollingLimit,
+    anonymous_scan_limit:        ANONYMOUS_SCAN_LIMIT_DEFAULT,
+    free_rolling_limit:          PLAN_DEFAULTS.free.rollingLimit,
+    starter_rolling_limit:       PLAN_DEFAULTS.starter.rollingLimit,
+    pro_rolling_limit:           PLAN_DEFAULTS.pro.rollingLimit,
+    team_rolling_limit:          PLAN_DEFAULTS.team.rollingLimit,
+    organization_rolling_limit:  PLAN_DEFAULTS.organization.rollingLimit,
+    enterprise_rolling_limit:    PLAN_DEFAULTS.enterprise.rollingLimit,
   };
 
   for (const row of (data || []) as { key: string; value: string }[]) {
@@ -53,17 +66,19 @@ export async function POST(req: NextRequest) {
   const db = createServiceRoleClient();
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const dbAny = db as any;
-  const updates: Array<{ key: string; value: string }> = [];
 
-  const allowed = ["anonymous_scan_limit", "free_rolling_limit", "starter_rolling_limit", "pro_rolling_limit"];
-  for (const key of allowed) {
+  const updates: Array<{ key: string; value: string }> = [];
+  for (const key of ALLOWED_KEYS) {
     if (typeof body[key] === "number" && body[key] > 0) {
       updates.push({ key, value: String(body[key]) });
     }
   }
 
   if (updates.length === 0) return NextResponse.json({ error: "No valid values" }, { status: 400 });
-  for (const u of updates) await dbAny.from("app_config").upsert(u, { onConflict: "key" });
 
-  return NextResponse.json({ success: true });
+  for (const u of updates) {
+    await dbAny.from("app_config").upsert(u, { onConflict: "key" });
+  }
+
+  return NextResponse.json({ success: true, updated: updates.length });
 }

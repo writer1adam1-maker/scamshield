@@ -5,7 +5,7 @@
 import { NextRequest } from "next/server";
 import { createServerClient } from "@supabase/ssr";
 import { createServiceRoleClient } from "@/lib/supabase/client";
-import { getPlanLimits, isPlanUnlimited, type Plan } from "@/lib/plan-config";
+import { getPlanLimits, type Plan } from "@/lib/plan-config";
 
 export interface AuthUser {
   id: string;
@@ -90,9 +90,7 @@ export async function canScan(
   if (!user) {
     return { allowed: true, remaining: ANONYMOUS_SCAN_LIMIT_DEFAULT, limit: ANONYMOUS_SCAN_LIMIT_DEFAULT };
   }
-  if (isPlanUnlimited(user.plan)) {
-    return { allowed: true, remaining: 999999, limit: 999999 };
-  }
+  // No plan is unlimited anymore (enterprise = 100k cap)
 
   const limits = await getPlanLimits(user.plan);
 
@@ -143,12 +141,9 @@ export async function incrementScanCount(userId: string): Promise<void> {
     let bonusPool = row.scan_bonus_pool || 0;
 
     // If over plan cap, consume from bonus pool
-    if (!isPlanUnlimited(plan)) {
-      const limits = await getPlanLimits(plan);
-      if (limits.rollingLimit > 0 && periodCount > limits.rollingLimit && bonusPool > 0) {
-        bonusPool = Math.max(0, bonusPool - 1);
-        periodCount = periodCount; // count still increments for tracking
-      }
+    const limits = await getPlanLimits(plan);
+    if (limits.rollingLimit > 0 && periodCount > limits.rollingLimit && bonusPool > 0) {
+      bonusPool = Math.max(0, bonusPool - 1);
     }
 
     const updates: Record<string, unknown> = {

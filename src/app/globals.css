@@ -1,7 +1,10 @@
 @import "tailwindcss";
 
-@theme {
-  /* ScamShield Cybersecurity Palette - Original Dark Theme */
+/* ============================================================
+   Theme: dark (default, cybersecurity)
+   ============================================================ */
+:root,
+[data-theme="dark"] {
   --color-void: #0a0a0f;
   --color-abyss: #0d0d14;
   --color-obsidian: #12121c;
@@ -9,7 +12,6 @@
   --color-slate-mid: #252540;
   --color-slate-light: #3a3a5c;
 
-  /* Threat spectrum */
   --color-safe: #00e5a0;
   --color-safe-dim: #00b87d;
   --color-caution: #fbbf24;
@@ -18,19 +20,161 @@
   --color-danger-dim: #cc2f4a;
   --color-critical: #ff1744;
 
-  /* Accent - Electric Cyan (shield/scan feel) */
   --color-shield: #00d4ff;
   --color-shield-dim: #00a8cc;
   --color-shield-glow: #00d4ff33;
 
-  /* Text */
   --color-text-primary: #e8e8f0;
   --color-text-secondary: #9494b8;
   --color-text-muted: #5a5a7a;
 
-  /* Borders */
   --color-border: #2a2a44;
   --color-border-bright: #3a3a5c;
+
+  --glass-bg: linear-gradient(135deg, rgba(26,26,46,0.8), rgba(18,18,28,0.9));
+  --glass-border: var(--color-border);
+
+  --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
+  --font-mono: 'JetBrains Mono', 'Fira Code', monospace;
+}
+
+/* ============================================================
+   Theme: midnight (deep blue)
+   ============================================================ */
+[data-theme="midnight"] {
+  --color-void: #030b1a;
+  --color-abyss: #050f22;
+  --color-obsidian: #081428;
+  --color-slate-deep: #0e1f3d;
+  --color-slate-mid: #172d55;
+  --color-slate-light: #1e3c6e;
+
+  --color-safe: #00e5a0;
+  --color-safe-dim: #00b87d;
+  --color-caution: #fbbf24;
+  --color-caution-dim: #d4a017;
+  --color-danger: #ff3b5c;
+  --color-danger-dim: #cc2f4a;
+  --color-critical: #ff1744;
+
+  --color-shield: #4fa3ff;
+  --color-shield-dim: #2d7de8;
+  --color-shield-glow: #4fa3ff33;
+
+  --color-text-primary: #dce8ff;
+  --color-text-secondary: #7b9fcf;
+  --color-text-muted: #3d5a8a;
+
+  --color-border: #1a3060;
+  --color-border-bright: #1e3c6e;
+
+  --glass-bg: linear-gradient(135deg, rgba(14,31,61,0.85), rgba(8,20,40,0.9));
+  --glass-border: var(--color-border);
+
+  --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
+  --font-mono: 'JetBrains Mono', 'Fira Code', monospace;
+}
+
+/* ============================================================
+   Theme: forest (dark green)
+   ============================================================ */
+[data-theme="forest"] {
+  --color-void: #020d06;
+  --color-abyss: #04110a;
+  --color-obsidian: #071710;
+  --color-slate-deep: #0d2618;
+  --color-slate-mid: #143524;
+  --color-slate-light: #1c4832;
+
+  --color-safe: #00e5a0;
+  --color-safe-dim: #00b87d;
+  --color-caution: #fbbf24;
+  --color-caution-dim: #d4a017;
+  --color-danger: #ff3b5c;
+  --color-danger-dim: #cc2f4a;
+  --color-critical: #ff1744;
+
+  --color-shield: #00ff88;
+  --color-shield-dim: #00cc66;
+  --color-shield-glow: #00ff8833;
+
+  --color-text-primary: #d4f0e0;
+  --color-text-secondary: #6baa88;
+  --color-text-muted: #2f5a42;
+
+  --color-border: #1a4030;
+  --color-border-bright: #1c4832;
+
+  --glass-bg: linear-gradient(135deg, rgba(13,38,24,0.85), rgba(7,23,16,0.9));
+  --glass-border: var(--color-border);
+
+  --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
+  --font-mono: 'JetBrains Mono', 'Fira Code', monospace;
+}
+
+/* ============================================================
+   Theme: light
+   ============================================================ */
+[data-theme="light"] {
+  --color-void: #f4f6fa;
+  --color-abyss: #eef0f7;
+  --color-obsidian: #e5e8f2;
+  --color-slate-deep: #dde0ef;
+  --color-slate-mid: #cbd0e6;
+  --color-slate-light: #b3bad9;
+
+  --color-safe: #00a86b;
+  --color-safe-dim: #007a50;
+  --color-caution: #d97706;
+  --color-caution-dim: #b45309;
+  --color-danger: #dc2626;
+  --color-danger-dim: #b91c1c;
+  --color-critical: #991b1b;
+
+  --color-shield: #0078cc;
+  --color-shield-dim: #005fa3;
+  --color-shield-glow: #0078cc33;
+
+  --color-text-primary: #1a1a2e;
+  --color-text-secondary: #4a4a6a;
+  --color-text-muted: #7a7a9a;
+
+  --color-border: #c8ccdf;
+  --color-border-bright: #b3bad9;
+
+  --glass-bg: linear-gradient(135deg, rgba(255,255,255,0.85), rgba(238,240,247,0.9));
+  --glass-border: var(--color-border);
+
+  --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
+  --font-mono: 'JetBrains Mono', 'Fira Code', monospace;
+}
+
+@theme {
+  --color-void: var(--color-void);
+  --color-abyss: var(--color-abyss);
+  --color-obsidian: var(--color-obsidian);
+  --color-slate-deep: var(--color-slate-deep);
+  --color-slate-mid: var(--color-slate-mid);
+  --color-slate-light: var(--color-slate-light);
+
+  --color-safe: var(--color-safe);
+  --color-safe-dim: var(--color-safe-dim);
+  --color-caution: var(--color-caution);
+  --color-caution-dim: var(--color-caution-dim);
+  --color-danger: var(--color-danger);
+  --color-danger-dim: var(--color-danger-dim);
+  --color-critical: var(--color-critical);
+
+  --color-shield: var(--color-shield);
+  --color-shield-dim: var(--color-shield-dim);
+  --color-shield-glow: var(--color-shield-glow);
+
+  --color-text-primary: var(--color-text-primary);
+  --color-text-secondary: var(--color-text-secondary);
+  --color-text-muted: var(--color-text-muted);
+
+  --color-border: var(--color-border);
+  --color-border-bright: var(--color-border-bright);
 
   --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
   --font-mono: 'JetBrains Mono', 'Fira Code', monospace;
@@ -61,6 +205,7 @@ body {
   background: var(--color-void);
   color: var(--color-text-primary);
   font-family: var(--font-sans);
+  transition: background 0.3s, color 0.3s;
 }
 
 /* Hex grid background pattern */
@@ -74,9 +219,9 @@ body {
 
 /* Glassmorphism card */
 .glass-card {
-  background: linear-gradient(135deg, rgba(26, 26, 46, 0.8), rgba(18, 18, 28, 0.9));
+  background: var(--glass-bg);
   backdrop-filter: blur(20px);
-  border: 1px solid var(--color-border);
+  border: 1px solid var(--glass-border);
   border-radius: 16px;
 }
 

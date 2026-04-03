@@ -1,28 +1,54 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import { Shield, Users, Trash2, RefreshCw, Settings, Crown, User, AlertTriangle, Loader2, CheckCircle } from "lucide-react";
+import {
+  Shield, Users, Trash2, RefreshCw, Settings, Crown, User,
+  AlertTriangle, Loader2, CheckCircle,
+} from "lucide-react";
 
 interface AdminUser {
   id: string;
   email: string;
-  plan: "free" | "pro";
+  plan: string;
   scan_count_today: number;
   scan_count_total: number;
   scans_today_actual: number;
   created_at: string;
 }
 
-interface ScanLimits {
+interface ScanConfig {
   anonymous_scan_limit: number;
-  registered_scan_limit: number;
+  free_rolling_limit: number;
+  starter_rolling_limit: number;
+  pro_rolling_limit: number;
+  team_rolling_limit: number;
+  organization_rolling_limit: number;
+  enterprise_rolling_limit: number;
 }
+
+const PLAN_COLORS: Record<string, string> = {
+  free:         "bg-border/50 text-text-muted border-border",
+  starter:      "bg-shield/10 text-shield border-shield/20",
+  pro:          "bg-yellow-400/10 text-yellow-400 border-yellow-400/20",
+  team:         "bg-green-400/10 text-green-400 border-green-400/20",
+  organization: "bg-purple-400/10 text-purple-400 border-purple-400/20",
+  enterprise:   "bg-orange-400/10 text-orange-400 border-orange-400/20",
+};
+
+const DEFAULT_CONFIG: ScanConfig = {
+  anonymous_scan_limit:        4,
+  free_rolling_limit:          50,
+  starter_rolling_limit:       200,
+  pro_rolling_limit:           500,
+  team_rolling_limit:          5000,
+  organization_rolling_limit:  20000,
+  enterprise_rolling_limit:    100000,
+};
 
 export default function AdminDashboard() {
   const [users, setUsers] = useState<AdminUser[]>([]);
-  const [limits, setLimits] = useState<ScanLimits>({ anonymous_scan_limit: 4, registered_scan_limit: 10 });
-  const [anonInput, setAnonInput] = useState("4");
-  const [registeredInput, setRegisteredInput] = useState("10");
+  const [config, setConfig] = useState<ScanConfig>(DEFAULT_CONFIG);
+  const [inputs, setInputs] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
   const [savingLimits, setSavingLimits] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
@@ -50,10 +76,12 @@ export default function AdminDashboard() {
       }
 
       if (configRes.ok) {
-        const cfg = await configRes.json();
-        setLimits(cfg);
-        setAnonInput(String(cfg.anonymous_scan_limit));
-        setRegisteredInput(String(cfg.registered_scan_limit));
+        const raw = await configRes.json();
+        const cfg: ScanConfig = { ...DEFAULT_CONFIG, ...raw };
+        setConfig(cfg);
+        const newInputs: Record<string, string> = {};
+        for (const [k, v] of Object.entries(cfg)) newInputs[k] = String(v);
+        setInputs(newInputs);
       }
     } catch {
       setError("Failed to load admin data.");
@@ -64,26 +92,30 @@ export default function AdminDashboard() {
   useEffect(() => { loadData(); }, [loadData]);
 
   async function saveLimits() {
-    const anon = parseInt(anonInput, 10);
-    const reg = parseInt(registeredInput, 10);
-    if (isNaN(anon) || isNaN(reg) || anon < 1 || reg < 1) {
-      setError("Limits must be positive numbers.");
-      return;
+    const updates: Record<string, number> = {};
+    for (const [k, v] of Object.entries(inputs)) {
+      const n = parseInt(v, 10);
+      if (isNaN(n) || n < 1) {
+        setError(`Invalid value for ${k}: must be a positive number.`);
+        return;
+      }
+      updates[k] = n;
     }
     setSavingLimits(true);
     setError(null);
     const res = await fetch("/api/admin/config", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ anonymous_scan_limit: anon, registered_scan_limit: reg }),
+      body: JSON.stringify(updates),
     });
     setSavingLimits(false);
     if (res.ok) {
-      setLimits({ anonymous_scan_limit: anon, registered_scan_limit: reg });
+      setConfig({ ...config, ...updates } as ScanConfig);
       setLimitsSaved(true);
       setTimeout(() => setLimitsSaved(false), 3000);
     } else {
-      setError("Failed to save limits.");
+      const data = await res.json().catch(() => ({}));
+      setError(data.error || "Failed to save limits.");
     }
   }
 
@@ -100,7 +132,7 @@ export default function AdminDashboard() {
   }
 
   const totalUsers = users.length;
-  const proUsers = users.filter((u) => u.plan === "pro").length;
+  const paidUsers = users.filter((u) => u.plan !== "free").length;
   const freeUsers = users.filter((u) => u.plan === "free").length;
   const totalScansToday = users.reduce((sum, u) => sum + (u.scans_today_actual || 0), 0);
 
@@ -123,13 +155,23 @@ export default function AdminDashboard() {
     );
   }
 
+  const limitFields: Array<{ key: keyof ScanConfig; label: string }> = [
+    { key: "anonymous_scan_limit",        label: "Anonymous (session)" },
+    { key: "free_rolling_limit",          label: "Free (30-day)" },
+    { key: "starter_rolling_limit",       label: "Starter (30-day)" },
+    { key: "pro_rolling_limit",           label: "Pro (30-day)" },
+    { key: "team_rolling_limit",          label: "Team (30-day)" },
+    { key: "organization_rolling_limit",  label: "Organization (30-day)" },
+    { key: "enterprise_rolling_limit",    label: "Enterprise (30-day)" },
+  ];
+
   return (
     <div className="max-w-7xl mx-auto px-4 py-8 space-y-8">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-shield/10 border border-shield/20 flex items-center justify-center">
-            <Shield className="w-5 h-5 text-shield" />
+          <div className="w-10 h-10 rounded-xl bg-yellow-400/10 border border-yellow-400/20 flex items-center justify-center">
+            <Shield className="w-5 h-5 text-yellow-400" />
           </div>
           <div>
             <h1 className="text-2xl font-bold text-text-primary">Admin Dashboard</h1>
@@ -155,10 +197,10 @@ export default function AdminDashboard() {
       {/* Stats */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {[
-          { label: "Total Users", value: totalUsers, icon: Users, color: "text-shield" },
-          { label: "Pro Users", value: proUsers, icon: Crown, color: "text-yellow-400" },
-          { label: "Free Users", value: freeUsers, icon: User, color: "text-text-muted" },
-          { label: "Scans Today", value: totalScansToday, icon: Shield, color: "text-green-400" },
+          { label: "Total Users",  value: totalUsers,      icon: Users,     color: "text-shield"     },
+          { label: "Paid Users",   value: paidUsers,       icon: Crown,     color: "text-yellow-400" },
+          { label: "Free Users",   value: freeUsers,       icon: User,      color: "text-text-muted" },
+          { label: "Scans Today",  value: totalScansToday, icon: Shield,    color: "text-green-400"  },
         ].map(({ label, value, icon: Icon, color }) => (
           <div key={label} className="glass-card p-4">
             <div className="flex items-center gap-2 mb-2">
@@ -175,31 +217,23 @@ export default function AdminDashboard() {
         <div className="flex items-center gap-2 mb-4">
           <Settings size={18} className="text-shield" />
           <h2 className="text-lg font-semibold text-text-primary">Scan Limits</h2>
-          <span className="text-xs text-text-muted ml-1">(current: anon={limits.anonymous_scan_limit}, registered={limits.registered_scan_limit})</span>
         </div>
-        <div className="flex flex-wrap items-end gap-4">
-          <div>
-            <label className="block text-xs text-text-muted mb-1">Anonymous users (per day)</label>
-            <input
-              type="number"
-              min="1"
-              max="1000"
-              value={anonInput}
-              onChange={(e) => setAnonInput(e.target.value)}
-              className="w-28 px-3 py-2 bg-abyss/80 border border-border rounded-lg text-sm text-text-primary focus:outline-none focus:border-shield/50 focus:ring-1 focus:ring-shield/20"
-            />
-          </div>
-          <div>
-            <label className="block text-xs text-text-muted mb-1">Registered free users (per day)</label>
-            <input
-              type="number"
-              min="1"
-              max="10000"
-              value={registeredInput}
-              onChange={(e) => setRegisteredInput(e.target.value)}
-              className="w-28 px-3 py-2 bg-abyss/80 border border-border rounded-lg text-sm text-text-primary focus:outline-none focus:border-shield/50 focus:ring-1 focus:ring-shield/20"
-            />
-          </div>
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 mb-4">
+          {limitFields.map(({ key, label }) => (
+            <div key={key}>
+              <label className="block text-xs text-text-muted mb-1">{label}</label>
+              <input
+                type="number"
+                min="1"
+                max="10000000"
+                value={inputs[key] ?? String(config[key])}
+                onChange={(e) => setInputs((prev) => ({ ...prev, [key]: e.target.value }))}
+                className="w-full px-3 py-2 bg-abyss/80 border border-border rounded-lg text-sm text-text-primary focus:outline-none focus:border-shield/50 focus:ring-1 focus:ring-shield/20"
+              />
+            </div>
+          ))}
+        </div>
+        <div className="flex items-center gap-3">
           <button
             onClick={saveLimits}
             disabled={savingLimits}
@@ -208,10 +242,8 @@ export default function AdminDashboard() {
             {savingLimits ? <Loader2 size={14} className="animate-spin" /> : limitsSaved ? <CheckCircle size={14} /> : <Settings size={14} />}
             {limitsSaved ? "Saved!" : "Apply Limits"}
           </button>
+          <p className="text-xs text-text-muted">Changes take effect within 60 seconds.</p>
         </div>
-        <p className="text-xs text-text-muted mt-3">
-          Pro users always have unlimited scans. Changes take effect within 60 seconds.
-        </p>
       </div>
 
       {/* Users Table */}
@@ -234,15 +266,10 @@ export default function AdminDashboard() {
             </thead>
             <tbody>
               {users.map((user) => (
-                <tr key={user.id} className="border-b border-border/50 hover:bg-white/2 transition-colors">
+                <tr key={user.id} className="border-b border-border/50 hover:bg-white/[0.02] transition-colors">
                   <td className="px-4 py-3 text-text-primary font-mono text-xs">{user.email}</td>
                   <td className="px-4 py-3">
-                    <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${
-                      user.plan === "pro"
-                        ? "bg-yellow-400/10 text-yellow-400 border border-yellow-400/20"
-                        : "bg-border/50 text-text-muted border border-border"
-                    }`}>
-                      {user.plan === "pro" && <Crown size={10} />}
+                    <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium border ${PLAN_COLORS[user.plan] || PLAN_COLORS.free}`}>
                       {user.plan}
                     </span>
                   </td>
@@ -275,3 +302,4 @@ export default function AdminDashboard() {
     </div>
   );
 }
+

@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   Shield, Zap, Check, X, ChevronDown, ChevronUp, Lock, Crown, Building2, Users, Gift,
+  Rocket, Globe,
 } from "lucide-react";
 
 const PLANS = [
@@ -14,6 +15,7 @@ const PLANS = [
     monthlyPrice: 0,
     annualPrice: 0,
     scansLabel: "50 scans / 30 days",
+    seats: 1,
     description: "For occasional scam checking. No card needed.",
     highlight: null,
     color: "text-text-secondary",
@@ -33,6 +35,7 @@ const PLANS = [
     monthlyPrice: 4.99,
     annualPrice: 3.99,
     scansLabel: "200 scans / 30 days",
+    seats: 1,
     description: "For people who check links regularly.",
     highlight: null,
     color: "text-shield",
@@ -52,8 +55,9 @@ const PLANS = [
     monthlyPrice: 12.99,
     annualPrice: 10.49,
     scansLabel: "500 scans / 30 days",
+    seats: 1,
     description: "For power users and small businesses.",
-    highlight: "MOST POPULAR",
+    highlight: "POPULAR",
     color: "text-yellow-400",
     features: [
       "500 scans per 30 days",
@@ -66,24 +70,71 @@ const PLANS = [
     notIncluded: ["REST API access"],
   },
   {
-    id: "business",
-    name: "Business",
-    icon: Building2,
+    id: "team",
+    name: "Team",
+    icon: Users,
     monthlyPrice: 49,
     annualPrice: 39,
-    scansLabel: "Unlimited scans",
-    description: "For agencies, developers, and high-volume teams.",
+    scansLabel: "5,000 scans / 30 days",
+    seats: 5,
+    description: "For small teams and agencies. API included.",
     highlight: null,
     color: "text-green-400",
     features: [
-      "Unlimited scans",
+      "5,000 scans per 30 days",
       "Full scan history & dashboard",
       "All analysis engines",
-      "Bulk scan (unlimited)",
+      "Bulk scanning (unlimited)",
       "REST API access",
-      "Priority support + SLA",
-      "Team seats (up to 10)",
+      "5 team seats",
       "Earn bonus scans via referrals",
+      "$3 / 1,000 overage scans",
+    ],
+    notIncluded: [] as string[],
+  },
+  {
+    id: "organization",
+    name: "Organization",
+    icon: Building2,
+    monthlyPrice: 149,
+    annualPrice: 119,
+    scansLabel: "20,000 scans / 30 days",
+    seats: 15,
+    description: "For growing organizations needing scale.",
+    highlight: null,
+    color: "text-purple-400",
+    features: [
+      "20,000 scans per 30 days",
+      "Full scan history & dashboard",
+      "All analysis engines",
+      "Bulk scanning (unlimited)",
+      "REST API access",
+      "15 team seats",
+      "Priority support",
+      "$3 / 1,000 overage scans",
+    ],
+    notIncluded: [] as string[],
+  },
+  {
+    id: "enterprise",
+    name: "Enterprise",
+    icon: Globe,
+    monthlyPrice: 399,
+    annualPrice: 319,
+    scansLabel: "100,000 scans / 30 days",
+    seats: 999,
+    description: "For large enterprises and high-volume platforms.",
+    highlight: null,
+    color: "text-orange-400",
+    features: [
+      "100,000 scans per 30 days",
+      "Full scan history & dashboard",
+      "All analysis engines",
+      "Bulk scanning (unlimited)",
+      "REST API access + webhooks",
+      "Unlimited seats",
+      "SLA + dedicated support",
+      "$3 / 1,000 overage scans",
     ],
     notIncluded: [] as string[],
   },
@@ -96,11 +147,15 @@ const FAQ = [
   },
   {
     question: "What are referral bonus scans?",
-    answer: "Share your referral code with a friend. When they sign up using your code, they get +20 bonus scans and you get +10. Bonus scans stack on top of your plan's allowance and never expire — they carry over when your 30-day window resets.",
+    answer: "Share your referral code with a friend. When they sign up using your code, they get +10 bonus scans and you get +10. Bonus scans stack on top of your plan's allowance and never expire — they carry over when your 30-day window resets.",
   },
   {
     question: "How many people can I refer?",
     answer: "You can refer up to 5 new accounts per day. Each successful referral earns you +10 bonus scans. There's no cap on total bonus scans you can accumulate.",
+  },
+  {
+    question: "What are overage scans?",
+    answer: "On Team, Organization, and Enterprise plans, if you exceed your monthly scan cap, additional scans are charged at $3 per 1,000 scans. This way you never get cut off mid-month. You'll receive a bill at the end of the billing period for any overages.",
   },
   {
     question: "What counts as a scan?",
@@ -112,7 +167,11 @@ const FAQ = [
   },
   {
     question: "Is the API production-ready?",
-    answer: "Yes. The REST API is available on Business plan with API key authentication, rate limit headers, and JSON responses. Generate your key from Settings.",
+    answer: "Yes. The REST API is available on Team plan and above, with API key authentication, rate limit headers, and JSON responses. Generate your key from Settings.",
+  },
+  {
+    question: "How do team seats work?",
+    answer: "Team seats let multiple people share one subscription. Each seat gets their own login and scan quota from the shared pool. Add and remove seats from Settings at any time.",
   },
 ];
 
@@ -140,6 +199,10 @@ export default function PricingPage() {
     } catch { /* silent */ }
     finally { setUpgrading(null); }
   }
+
+  // Split into 2 rows: individual (3) + business (3)
+  const individualPlans = PLANS.slice(0, 3);
+  const businessPlans = PLANS.slice(3);
 
   return (
     <div className="space-y-12 pb-16">
@@ -175,81 +238,26 @@ export default function PricingPage() {
         </div>
       </div>
 
-      {/* Plan cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 max-w-5xl mx-auto px-4">
-        {PLANS.map((plan) => {
-          const Icon = plan.icon;
-          const price = annual ? plan.annualPrice : plan.monthlyPrice;
-          const isPopular = plan.highlight === "MOST POPULAR";
-
-          return (
-            <div
-              key={plan.id}
-              className={`glass-card p-5 flex flex-col relative overflow-hidden ${isPopular ? "border-yellow-400/30" : ""}`}
-            >
-              {isPopular && (
-                <div className="absolute -top-px left-0 right-0 h-0.5 bg-gradient-to-r from-transparent via-yellow-400 to-transparent" />
-              )}
-              {plan.highlight && (
-                <div className="absolute top-3 right-3 px-2 py-0.5 rounded-full bg-yellow-400/10 border border-yellow-400/20 text-yellow-400 text-[10px] font-mono">
-                  {plan.highlight}
-                </div>
-              )}
-
-              <div className="mb-4">
-                <div className={`flex items-center gap-2 mb-2 ${plan.color}`}>
-                  <Icon className="w-5 h-5" />
-                  <h2 className="text-base font-semibold text-text-primary">{plan.name}</h2>
-                </div>
-                <div className="flex items-baseline gap-1 mb-1">
-                  {price === 0 ? (
-                    <span className="text-3xl font-bold font-mono text-text-primary">$0</span>
-                  ) : (
-                    <>
-                      <span className="text-3xl font-bold font-mono text-text-primary">${price}</span>
-                      <span className="text-text-muted text-xs">/mo{annual ? " billed yearly" : ""}</span>
-                    </>
-                  )}
-                </div>
-                <div className={`text-xs font-mono ${plan.color} mb-2`}>{plan.scansLabel}</div>
-                <p className="text-text-muted text-xs">{plan.description}</p>
-              </div>
-
-              <ul className="space-y-2 flex-1 mb-5">
-                {plan.features.map((f) => (
-                  <li key={f} className="flex items-start gap-2 text-xs text-text-secondary">
-                    <Check className={`w-3.5 h-3.5 shrink-0 mt-0.5 ${plan.color}`} />
-                    {f}
-                  </li>
-                ))}
-                {plan.notIncluded.map((f) => (
-                  <li key={f} className="flex items-start gap-2 text-xs text-text-muted">
-                    <X className="w-3.5 h-3.5 shrink-0 mt-0.5" />
-                    {f}
-                  </li>
-                ))}
-              </ul>
-
-              <button
-                onClick={() => handleUpgrade(plan.id)}
-                disabled={upgrading === plan.id}
-                className={`w-full py-2.5 px-4 rounded-lg text-sm font-semibold transition-all flex items-center justify-center gap-2 disabled:opacity-50 ${
-                  plan.id === "free"
-                    ? "border border-border text-text-primary hover:border-shield/30 hover:bg-shield/5"
-                    : isPopular
-                    ? "bg-yellow-400 text-void hover:bg-yellow-300"
-                    : "bg-shield text-void hover:bg-shield/90 shield-glow"
-                }`}
-              >
-                <Lock className="w-3.5 h-3.5" />
-                {upgrading === plan.id ? "Redirecting..." : plan.id === "free" ? "Get Started Free" : `Get ${plan.name}`}
-              </button>
-            </div>
-          );
-        })}
+      {/* Individual plans */}
+      <div>
+        <p className="text-xs font-mono text-text-muted uppercase tracking-widest text-center mb-4">Individual</p>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 max-w-4xl mx-auto px-4">
+          {individualPlans.map((plan) => <PlanCard key={plan.id} plan={plan} annual={annual} upgrading={upgrading} onUpgrade={handleUpgrade} />)}
+        </div>
       </div>
 
-      {/* How it works */}
+      {/* Business plans */}
+      <div>
+        <p className="text-xs font-mono text-text-muted uppercase tracking-widest text-center mb-4">Business &amp; Enterprise</p>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 max-w-4xl mx-auto px-4">
+          {businessPlans.map((plan) => <PlanCard key={plan.id} plan={plan} annual={annual} upgrading={upgrading} onUpgrade={handleUpgrade} />)}
+        </div>
+        <p className="text-center text-xs text-text-muted mt-4">
+          All business plans include <strong className="text-text-secondary">$3 / 1,000 overage scans</strong> — you&apos;re never cut off.
+        </p>
+      </div>
+
+      {/* How referrals work */}
       <div className="max-w-2xl mx-auto px-4">
         <div className="glass-card p-6 space-y-4">
           <h3 className="text-base font-semibold text-text-primary flex items-center gap-2">
@@ -300,6 +308,84 @@ export default function PricingPage() {
           })}
         </div>
       </div>
+    </div>
+  );
+}
+
+type PlanType = typeof PLANS[number];
+
+function PlanCard({ plan, annual, upgrading, onUpgrade }: {
+  plan: PlanType;
+  annual: boolean;
+  upgrading: string | null;
+  onUpgrade: (id: string) => void;
+}) {
+  const Icon = plan.icon;
+  const price = annual ? plan.annualPrice : plan.monthlyPrice;
+  const isPopular = plan.highlight === "POPULAR";
+
+  return (
+    <div className={`glass-card p-5 flex flex-col relative overflow-hidden ${isPopular ? "border-yellow-400/30" : ""}`}>
+      {isPopular && (
+        <div className="absolute -top-px left-0 right-0 h-0.5 bg-gradient-to-r from-transparent via-yellow-400 to-transparent" />
+      )}
+      {plan.highlight && (
+        <div className="absolute top-3 right-3 px-2 py-0.5 rounded-full bg-yellow-400/10 border border-yellow-400/20 text-yellow-400 text-[10px] font-mono">
+          {plan.highlight}
+        </div>
+      )}
+
+      <div className="mb-4">
+        <div className={`flex items-center gap-2 mb-2 ${plan.color}`}>
+          <Icon className="w-5 h-5" />
+          <h2 className="text-base font-semibold text-text-primary">{plan.name}</h2>
+        </div>
+        <div className="flex items-baseline gap-1 mb-1">
+          {price === 0 ? (
+            <span className="text-3xl font-bold font-mono text-text-primary">$0</span>
+          ) : (
+            <>
+              <span className="text-3xl font-bold font-mono text-text-primary">${price}</span>
+              <span className="text-text-muted text-xs">/mo{annual ? " billed yearly" : ""}</span>
+            </>
+          )}
+        </div>
+        <div className={`text-xs font-mono ${plan.color} mb-1`}>{plan.scansLabel}</div>
+        {plan.seats > 1 && (
+          <div className="text-xs text-text-muted mb-1">{plan.seats === 999 ? "Unlimited seats" : `${plan.seats} seats`}</div>
+        )}
+        <p className="text-text-muted text-xs">{plan.description}</p>
+      </div>
+
+      <ul className="space-y-2 flex-1 mb-5">
+        {plan.features.map((f) => (
+          <li key={f} className="flex items-start gap-2 text-xs text-text-secondary">
+            <Check className={`w-3.5 h-3.5 shrink-0 mt-0.5 ${plan.color}`} />
+            {f}
+          </li>
+        ))}
+        {plan.notIncluded.map((f) => (
+          <li key={f} className="flex items-start gap-2 text-xs text-text-muted">
+            <X className="w-3.5 h-3.5 shrink-0 mt-0.5" />
+            {f}
+          </li>
+        ))}
+      </ul>
+
+      <button
+        onClick={() => onUpgrade(plan.id)}
+        disabled={upgrading === plan.id}
+        className={`w-full py-2.5 px-4 rounded-lg text-sm font-semibold transition-all flex items-center justify-center gap-2 disabled:opacity-50 ${
+          plan.id === "free"
+            ? "border border-border text-text-primary hover:border-shield/30 hover:bg-shield/5"
+            : isPopular
+            ? "bg-yellow-400 text-void hover:bg-yellow-300"
+            : "bg-shield text-void hover:bg-shield/90 shield-glow"
+        }`}
+      >
+        {plan.id === "free" ? <Shield className="w-3.5 h-3.5" /> : upgrading === plan.id ? <Rocket className="w-3.5 h-3.5 animate-bounce" /> : <Lock className="w-3.5 h-3.5" />}
+        {upgrading === plan.id ? "Redirecting..." : plan.id === "free" ? "Get Started Free" : `Get ${plan.name}`}
+      </button>
     </div>
   );
 }

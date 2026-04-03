@@ -1,45 +1,88 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Settings, Bell, Moon, User, Trash2, LogOut, Loader2, CheckCircle2, AlertTriangle, Key } from "lucide-react";
+import {
+  Settings, Bell, Palette, User, Trash2, LogOut, Loader2, CheckCircle2,
+  AlertTriangle, Key, Gift, Copy, ShieldAlert,
+} from "lucide-react";
 import { createBrowserClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import type { User as SupabaseUser } from "@supabase/supabase-js";
+
+const THEMES = [
+  { id: "dark",       label: "Dark",       desc: "Cybersecurity black",      preview: ["#0a0a0f", "#00d4ff", "#00e5a0"] },
+  { id: "midnight",   label: "Midnight",   desc: "Deep ocean blue",          preview: ["#030b1a", "#4fa3ff", "#00e5a0"] },
+  { id: "forest",     label: "Forest",     desc: "Dark green terminal",      preview: ["#020d06", "#00ff88", "#fbbf24"] },
+  { id: "light",      label: "Light",      desc: "Clean and bright",         preview: ["#f4f6fa", "#0078cc", "#00a86b"] },
+] as const;
+
+type ThemeId = typeof THEMES[number]["id"];
+
+const PLAN_LABELS: Record<string, string> = {
+  free: "Free",
+  starter: "Starter",
+  pro: "Pro",
+  team: "Team",
+  organization: "Organization",
+  enterprise: "Enterprise",
+};
+
+const ADMIN_EMAILS = (process.env.NEXT_PUBLIC_ADMIN_EMAILS || "").split(",").map((e) => e.trim().toLowerCase());
 
 export default function SettingsPage() {
   const [notifications, setNotifications] = useState(true);
   const [user, setUser] = useState<SupabaseUser | null>(null);
-  const [userPlan, setUserPlan] = useState<"free" | "pro">("free");
+  const [userPlan, setUserPlan] = useState<string>("free");
   const [scanCountTotal, setScanCountTotal] = useState(0);
+  const [referralCode, setReferralCode] = useState<string | null>(null);
   const [loadingUser, setLoadingUser] = useState(true);
   const [signingOut, setSigningOut] = useState(false);
-  const [deletingAccount, setDeletingAccount] = useState(false);
   const [passwordResetSent, setPasswordResetSent] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState(false);
+  const [deletingAccount, setDeletingAccount] = useState(false);
+  const [copiedCode, setCopiedCode] = useState(false);
+  const [theme, setTheme] = useState<ThemeId>("dark");
   const router = useRouter();
 
+  const isAdmin = user ? ADMIN_EMAILS.includes((user.email || "").toLowerCase()) : false;
+
   useEffect(() => {
+    // Load saved theme
+    try {
+      const saved = (localStorage.getItem("theme") || "dark") as ThemeId;
+      setTheme(saved);
+    } catch { /* ignore */ }
+
     const supabase = createBrowserClient();
     async function load() {
       const { data: { user: authUser } } = await supabase.auth.getUser();
       setUser(authUser);
 
       if (authUser) {
-        const { data } = await supabase
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const { data } = await (supabase as any)
           .from("users")
-          .select("plan, scan_count_total")
+          .select("plan, scan_count_total, referral_code")
           .eq("id", authUser.id)
           .single();
-        const dbUser = data as { plan?: string; scan_count_total?: number } | null;
+        const dbUser = data as { plan?: string; scan_count_total?: number; referral_code?: string } | null;
         if (dbUser) {
-          setUserPlan((dbUser.plan as "free" | "pro") ?? "free");
+          setUserPlan(dbUser.plan ?? "free");
           setScanCountTotal(dbUser.scan_count_total ?? 0);
+          setReferralCode(dbUser.referral_code || null);
         }
       }
       setLoadingUser(false);
     }
     load();
   }, []);
+
+  function applyTheme(t: ThemeId) {
+    setTheme(t);
+    document.documentElement.setAttribute("data-theme", t);
+    try { localStorage.setItem("theme", t); } catch { /* ignore */ }
+  }
 
   async function handleSignOut() {
     setSigningOut(true);
@@ -58,6 +101,14 @@ export default function SettingsPage() {
     setPasswordResetSent(true);
   }
 
+  function copyReferralCode() {
+    if (!referralCode) return;
+    navigator.clipboard.writeText(referralCode).then(() => {
+      setCopiedCode(true);
+      setTimeout(() => setCopiedCode(false), 2000);
+    });
+  }
+
   return (
     <div className="space-y-8 max-w-2xl">
       {/* Header */}
@@ -70,6 +121,20 @@ export default function SettingsPage() {
           Manage your preferences and account
         </p>
       </div>
+
+      {/* Admin shortcut — only visible to admins */}
+      {isAdmin && (
+        <Link
+          href="/admin"
+          className="flex items-center gap-3 p-4 rounded-xl bg-yellow-400/5 border border-yellow-400/20 hover:bg-yellow-400/10 transition-colors"
+        >
+          <ShieldAlert className="w-5 h-5 text-yellow-400" />
+          <div>
+            <p className="text-sm font-semibold text-yellow-400">Admin Dashboard</p>
+            <p className="text-xs text-text-muted">Manage users, scan limits, and platform config</p>
+          </div>
+        </Link>
+      )}
 
       {/* Account */}
       <section className="glass-card p-6 space-y-4">
@@ -101,23 +166,53 @@ export default function SettingsPage() {
             <div className="flex items-center justify-between p-3 rounded-lg bg-abyss/60 border border-border/40">
               <div>
                 <p className="text-xs text-text-muted mb-0.5">Current plan</p>
-                <p className={`text-sm font-semibold ${userPlan === "pro" ? "text-safe" : "text-text-primary"}`}>
-                  {userPlan === "pro" ? "Pro" : "Free"}
+                <p className="text-sm font-semibold text-text-primary">
+                  {isAdmin ? "Ultimate (Admin)" : (PLAN_LABELS[userPlan] ?? userPlan)}
                 </p>
                 <p className="text-[10px] text-text-muted mt-0.5">{scanCountTotal} total scans</p>
               </div>
-              {userPlan === "pro" ? (
-                <span className="px-3 py-1 rounded-lg bg-safe/10 border border-safe/20 text-safe text-xs font-semibold">
-                  Active
-                </span>
-              ) : (
-                <a
+              {userPlan === "free" && !isAdmin ? (
+                <Link
                   href="/pricing"
                   className="px-3 py-1 rounded-lg bg-shield/10 border border-shield/20 text-shield text-xs font-semibold hover:bg-shield/15 transition-colors"
                 >
                   Upgrade
-                </a>
+                </Link>
+              ) : (
+                <span className="px-3 py-1 rounded-lg bg-safe/10 border border-safe/20 text-safe text-xs font-semibold">
+                  Active
+                </span>
               )}
+            </div>
+
+            {/* Referral code */}
+            <div className="p-3 rounded-lg bg-abyss/60 border border-border/40">
+              <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center gap-2">
+                  <Gift size={14} className="text-shield" />
+                  <p className="text-xs font-medium text-text-primary">Your referral code</p>
+                </div>
+                <span className="text-[10px] text-text-muted">+10 scans per referral</span>
+              </div>
+              {referralCode ? (
+                <div className="flex items-center gap-2">
+                  <span className="flex-1 px-3 py-2 rounded-lg bg-void/60 border border-border font-mono text-sm text-shield tracking-widest">
+                    {referralCode}
+                  </span>
+                  <button
+                    onClick={copyReferralCode}
+                    className="flex items-center gap-1.5 px-3 py-2 rounded-lg border border-border text-xs text-text-secondary hover:text-shield hover:border-shield/30 transition-colors"
+                  >
+                    {copiedCode ? <CheckCircle2 size={12} className="text-safe" /> : <Copy size={12} />}
+                    {copiedCode ? "Copied!" : "Copy"}
+                  </button>
+                </div>
+              ) : (
+                <p className="text-xs text-text-muted">Loading code…</p>
+              )}
+              <p className="text-[10px] text-text-muted mt-2">
+                Share this code with friends. When they sign up you both get +10 bonus scans.
+              </p>
             </div>
 
             {/* Password reset */}
@@ -157,24 +252,61 @@ export default function SettingsPage() {
             <p className="text-sm text-text-muted">
               Sign in to manage your account, view scan history, and access Pro features.
             </p>
-            <a
+            <Link
               href="/login"
               className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-shield/10 border border-shield/20 text-shield text-sm font-semibold hover:bg-shield/15 transition-colors"
             >
               Sign in
-            </a>
+            </Link>
             <span className="text-text-muted text-sm mx-2">or</span>
-            <a
+            <Link
               href="/signup"
               className="inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-border text-text-secondary text-sm hover:border-shield/30 transition-colors"
             >
               Create account
-            </a>
+            </Link>
           </div>
         )}
       </section>
 
-      {/* Notification Preferences */}
+      {/* Theme picker */}
+      <section className="glass-card p-6 space-y-4">
+        <div className="flex items-center gap-2 mb-2">
+          <Palette className="w-5 h-5 text-shield" />
+          <h2 className="text-lg font-semibold text-text-primary">Theme</h2>
+        </div>
+
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          {THEMES.map((t) => (
+            <button
+              key={t.id}
+              onClick={() => applyTheme(t.id)}
+              className={`p-3 rounded-xl border text-left transition-all ${
+                theme === t.id
+                  ? "border-shield bg-shield/10 shadow-[0_0_12px_rgba(0,212,255,0.15)]"
+                  : "border-border hover:border-shield/30 bg-abyss/40"
+              }`}
+            >
+              {/* Color preview dots */}
+              <div className="flex gap-1 mb-2">
+                {t.preview.map((c, i) => (
+                  <div key={i} className="w-4 h-4 rounded-full border border-white/10" style={{ backgroundColor: c }} />
+                ))}
+              </div>
+              <p className="text-xs font-medium text-text-primary">{t.label}</p>
+              <p className="text-[10px] text-text-muted mt-0.5">{t.desc}</p>
+              {theme === t.id && (
+                <div className="flex items-center gap-1 mt-1.5">
+                  <CheckCircle2 size={10} className="text-shield" />
+                  <span className="text-[10px] text-shield">Active</span>
+                </div>
+              )}
+            </button>
+          ))}
+        </div>
+      </section>
+
+      {/* Notifications */}
       <section className="glass-card p-6 space-y-4">
         <div className="flex items-center gap-2 mb-2">
           <Bell className="w-5 h-5 text-shield" />
@@ -204,30 +336,6 @@ export default function SettingsPage() {
         </div>
       </section>
 
-      {/* Theme */}
-      <section className="glass-card p-6 space-y-4">
-        <div className="flex items-center gap-2 mb-2">
-          <Moon className="w-5 h-5 text-shield" />
-          <h2 className="text-lg font-semibold text-text-primary">Theme</h2>
-        </div>
-
-        <div className="flex items-center justify-between">
-          <div>
-            <p className="text-sm text-text-primary">Dark mode</p>
-            <p className="text-xs text-text-muted">Light mode coming soon</p>
-          </div>
-          <button
-            role="switch"
-            aria-checked={true}
-            aria-label="Toggle dark mode"
-            className="relative w-12 h-6 rounded-full bg-shield cursor-not-allowed opacity-60"
-            disabled
-          >
-            <div className="absolute top-0.5 w-5 h-5 rounded-full bg-white translate-x-6" />
-          </button>
-        </div>
-      </section>
-
       {/* Danger Zone */}
       {user && (
         <section className="glass-card p-6 space-y-4 border-danger/20">
@@ -249,9 +357,8 @@ export default function SettingsPage() {
                     setDeletingAccount(true);
                     try {
                       const supabase = createBrowserClient();
-                      // Delete user data from public.users (cascades to scans, api_keys)
-                      await supabase.from("users").delete().eq("id", user!.id);
-                      // Sign out (auth.users row deleted via cascade from public.users FK)
+                      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                      await (supabase as any).from("users").delete().eq("id", user!.id);
                       await supabase.auth.signOut();
                       router.push("/");
                       router.refresh();

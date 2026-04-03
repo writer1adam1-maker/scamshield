@@ -4,20 +4,33 @@
 
 import { createServiceRoleClient } from "@/lib/supabase/client";
 
-export type Plan = "free" | "starter" | "pro" | "business";
+export type Plan = "free" | "starter" | "pro" | "team" | "organization" | "enterprise";
 
 export interface PlanLimits {
   rollingLimit: number; // max scans per 30-day rolling window (0 = unlimited)
+  seats: number;        // max team seats (1 = individual)
+  apiAccess: boolean;
 }
 
 // Defaults used if DB unreachable
 export const ANONYMOUS_SCAN_LIMIT_DEFAULT = 4;
 
 export const PLAN_DEFAULTS: Record<Plan, PlanLimits> = {
-  free:     { rollingLimit: 50  },
-  starter:  { rollingLimit: 200 },
-  pro:      { rollingLimit: 500 },
-  business: { rollingLimit: 0   }, // unlimited
+  free:         { rollingLimit: 50,      seats: 1,  apiAccess: false },
+  starter:      { rollingLimit: 200,     seats: 1,  apiAccess: false },
+  pro:          { rollingLimit: 500,     seats: 1,  apiAccess: false },
+  team:         { rollingLimit: 5000,    seats: 5,  apiAccess: true  },
+  organization: { rollingLimit: 20000,   seats: 15, apiAccess: true  },
+  enterprise:   { rollingLimit: 100000,  seats: 999, apiAccess: true },
+};
+
+export const PLAN_PRICES: Record<Plan, { monthly: number; annual: number }> = {
+  free:         { monthly: 0,    annual: 0     },
+  starter:      { monthly: 4.99, annual: 3.99  },
+  pro:          { monthly: 12.99, annual: 10.49 },
+  team:         { monthly: 49,   annual: 39    },
+  organization: { monthly: 149,  annual: 119   },
+  enterprise:   { monthly: 399,  annual: 319   },
 };
 
 export const REFERRAL_DEFAULTS = {
@@ -51,10 +64,14 @@ async function loadConfig(): Promise<Record<string, number>> {
 }
 
 export async function getPlanLimits(plan: Plan): Promise<PlanLimits> {
-  if (plan === "business") return { rollingLimit: 0 };
+  const defaults = PLAN_DEFAULTS[plan];
+  // enterprise and organization/team use fixed limits from PLAN_DEFAULTS
+  // but allow admin override for rolling limit via app_config
   const cfg = await loadConfig();
+  const rollingKey = `${plan}_rolling_limit`;
   return {
-    rollingLimit: cfg[`${plan}_rolling_limit`] ?? PLAN_DEFAULTS[plan].rollingLimit,
+    ...defaults,
+    rollingLimit: cfg[rollingKey] ?? defaults.rollingLimit,
   };
 }
 
@@ -67,6 +84,12 @@ export async function getReferralConfig() {
   };
 }
 
-export function isPlanUnlimited(plan: Plan): boolean {
-  return plan === "business";
+export function isPlanUnlimited(_plan: Plan): boolean {
+  // No plan is truly unlimited anymore — enterprise has 100k cap
+  return false;
+}
+
+// Plans that get API access
+export function hasApiAccess(plan: Plan): boolean {
+  return PLAN_DEFAULTS[plan].apiAccess;
 }

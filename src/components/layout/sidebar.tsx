@@ -34,19 +34,26 @@ const navItems = [
   { href: "/settings", label: "Settings", icon: Settings },
 ];
 
+const PLAN_LABELS: Record<string, string> = {
+  free:         "Free plan",
+  starter:      "Starter plan",
+  pro:          "Pro plan",
+  team:         "Team plan",
+  organization: "Organization",
+  enterprise:   "Enterprise",
+};
+
 const ADMIN_EMAILS = (process.env.NEXT_PUBLIC_ADMIN_EMAILS || "").split(",").map((e) => e.trim().toLowerCase());
 
 export function Sidebar() {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [user, setUser] = useState<SupabaseUser | null>(null);
-  const [scanCountToday, setScanCountToday] = useState(0);
-  const [userPlan, setUserPlan] = useState<"free" | "pro">("free");
+  const [scanCountPeriod, setScanCountPeriod] = useState(0);
+  const [userPlan, setUserPlan] = useState<string>("free");
   const [isAdmin, setIsAdmin] = useState(false);
+  const [rollingLimit, setRollingLimit] = useState(50); // free default
   const pathname = usePathname();
   const router = useRouter();
-
-  const [freeScansMax, setFreeScansMax] = useState(10);
-  const freeScansUsed = scanCountToday;
 
   useEffect(() => {
     const supabase = createBrowserClient();
@@ -59,35 +66,39 @@ export function Sidebar() {
         const adminCheck = ADMIN_EMAILS.includes((authUser.email || "").toLowerCase());
         setIsAdmin(adminCheck);
 
-        // Fetch real scan count and plan from users table
-        const { data } = await supabase
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const { data } = await (supabase as any)
           .from("users")
-          .select("scan_count_today, plan, updated_at")
+          .select("scan_count_month, plan, last_month_reset")
           .eq("id", authUser.id)
           .single();
 
-        const dbUser = data as { scan_count_today?: number; plan?: string; updated_at?: string } | null;
+        const dbUser = data as {
+          scan_count_month?: number;
+          plan?: string;
+          last_month_reset?: string;
+        } | null;
+
         if (dbUser) {
-          // Reset daily count if it's a new UTC day
-          const lastUpdate = new Date(dbUser.updated_at || 0);
-          const now = new Date();
-          const isNewDay =
-            lastUpdate.getUTCFullYear() !== now.getUTCFullYear() ||
-            lastUpdate.getUTCMonth() !== now.getUTCMonth() ||
-            lastUpdate.getUTCDate() !== now.getUTCDate();
+          const plan = dbUser.plan || "free";
+          setUserPlan(plan);
 
-          setScanCountToday(isNewDay ? 0 : (dbUser.scan_count_today ?? 0));
-          setUserPlan((dbUser.plan as "free" | "pro") ?? "free");
+          // Check if we're in a new 30-day period
+          const now = Date.now();
+          const periodStart = dbUser.last_month_reset ? new Date(dbUser.last_month_reset).getTime() : 0;
+          const isNewPeriod = now - periodStart >= 30 * 24 * 60 * 60 * 1000;
+          setScanCountPeriod(isNewPeriod ? 0 : (dbUser.scan_count_month ?? 0));
+
+          // Load rolling limit from config
+          try {
+            const cfgRes = await fetch("/api/scan/limits");
+            if (cfgRes.ok) {
+              const cfg = await cfgRes.json();
+              const key = `${plan}_rolling_limit`;
+              if (cfg[key]) setRollingLimit(cfg[key]);
+            }
+          } catch { /* use default */ }
         }
-
-        // Load registered user scan limit from config
-        try {
-          const cfgRes = await fetch("/api/scan/limits");
-          if (cfgRes.ok) {
-            const cfg = await cfgRes.json();
-            if (cfg.registered_scan_limit) setFreeScansMax(cfg.registered_scan_limit);
-          }
-        } catch { /* use default */ }
       }
     }
 
@@ -215,21 +226,19 @@ export function Sidebar() {
 
         {/* Bottom section */}
         <div className="p-4 space-y-3 border-t border-border/50">
-          {/* Usage counter — only for free plan (not admin) */}
-          {userPlan === "free" && !isAdmin && (
+          {/* Usage counter — only for free/starter plans (not admin, not high-tier) */}
+          {user && !isAdmin && (userPlan === "free" || userPlan === "starter") && (
             <div className="p-3 rounded-xl bg-slate-deep/40 border border-border/50">
               <div className="flex items-center justify-between mb-2">
-                <span className="text-xs font-mono text-text-muted">Scans today</span>
-                <span className={`text-xs font-mono ${freeScansUsed >= freeScansMax ? "text-danger" : "text-shield"}`}>
-                  {freeScansUsed}/{freeScansMax}
+                <span className="text-xs font-mono text-text-muted">Scans this period</span>
+                <span className={`text-xs font-mono ${scanCountPeriod >= rollingLimit ? "text-danger" : "text-shield"}`}>
+                  {scanCountPeriod}/{rollingLimit}
                 </span>
               </div>
               <div className="w-full h-1.5 rounded-full bg-obsidian overflow-hidden">
                 <div
-                  className={`h-full rounded-full transition-all duration-500 ${freeScansUsed >= freeScansMax ? "bg-danger" : "bg-shield"}`}
-                  style={{
-                    width: `${Math.min(100, (freeScansUsed / freeScansMax) * 100)}%`,
-                  }}
+                  className={`h-full rounded-full transition-all duration-500 ${scanCountPeriod >= rollingLimit ? "bg-danger" : "bg-shield"}`}
+                  style={{ width: `${Math.min(100, (scanCountPeriod / rollingLimit) * 100)}%` }}
                 />
               </div>
             </div>
@@ -240,18 +249,18 @@ export function Sidebar() {
             <div className="p-3 rounded-xl bg-yellow-400/5 border border-yellow-400/20 text-center">
               <span className="text-xs font-mono text-yellow-400">Ultimate Plan — Admin Access</span>
             </div>
-          ) : userPlan === "pro" ? (
-            <div className="p-3 rounded-xl bg-safe/5 border border-safe/20 text-center">
-              <span className="text-xs font-mono text-safe">Pro Plan — Unlimited Scans</span>
-            </div>
-          ) : (
+          ) : userPlan === "free" ? (
             <Link
               href="/pricing"
               className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-shield/10 border border-shield/20 text-shield text-sm font-semibold hover:bg-shield/15 transition-all shield-glow"
             >
               <Zap size={14} />
-              Upgrade to Pro
+              Upgrade Plan
             </Link>
+          ) : (
+            <div className="p-3 rounded-xl bg-safe/5 border border-safe/20 text-center">
+              <span className="text-xs font-mono text-safe">{PLAN_LABELS[userPlan] ?? userPlan}</span>
+            </div>
           )}
 
           {/* User section */}
@@ -263,7 +272,7 @@ export function Sidebar() {
               <div className="flex-1 min-w-0">
                 <div className="text-xs text-text-secondary truncate">{user.email}</div>
                 <div className="text-[10px] font-mono text-text-muted">
-                  {isAdmin ? "Ultimate" : userPlan === "pro" ? "Pro plan" : "Free plan"}
+                  {isAdmin ? "Ultimate" : (PLAN_LABELS[userPlan] ?? userPlan)}
                 </div>
               </div>
               <button
