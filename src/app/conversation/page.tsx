@@ -292,7 +292,16 @@ export default function ConversationPage() {
           />
           <div className="flex items-center justify-between mt-1">
             <span className="text-[10px] font-mono text-text-muted">{text.length.toLocaleString()} chars</span>
-            <span className="text-[10px] font-mono text-text-muted">max 100,000</span>
+            {text.trim() && (() => {
+              const words = text.trim().split(/\s+/).filter(Boolean).length;
+              const scans = Math.min(10, Math.max(1, Math.floor(words / 1000)));
+              return (
+                <span className="text-[10px] font-mono text-caution">
+                  ~{words.toLocaleString()} words · costs {scans} scan{scans > 1 ? "s" : ""}
+                </span>
+              );
+            })()}
+            {!text.trim() && <span className="text-[10px] font-mono text-text-muted">max 100,000 chars</span>}
           </div>
         </div>
 
