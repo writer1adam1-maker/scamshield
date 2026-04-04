@@ -74,7 +74,7 @@ async function fetchRecentMessages(
 ): Promise<GmailHistoryResult> {
   // Get list of recent message IDs
   const listRes = await fetch(
-    `${GMAIL_API}/users/me/messages?maxResults=20&q=is:inbox`,
+    `${GMAIL_API}/users/me/messages?maxResults=20`,
     { headers }
   );
 
