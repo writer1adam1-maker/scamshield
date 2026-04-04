@@ -10,6 +10,10 @@ import { scanEmails } from "@/lib/gmail/scan-emails";
 
 const CRON_SECRET = process.env.CRON_SECRET;
 
+export async function GET(req: NextRequest) {
+  return POST(req);
+}
+
 export async function POST(req: NextRequest) {
   // Authenticate cron caller
   const auth = req.headers.get("authorization");
