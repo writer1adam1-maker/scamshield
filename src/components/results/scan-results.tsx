@@ -231,7 +231,7 @@ export function ScanResults({
   return (
     <div className={clsx("space-y-6", className)}>
       {/* ---- Top: Score + Category ---- */}
-      <div className="glass-card p-6 md:p-8 flex flex-col items-center text-center">
+      <div className="glass-card p-6 md:p-8 flex flex-col items-center text-center" data-tour="score-ring">
         <ScoreRing score={score} label="Threat Score" size={180} />
 
         {confidenceInterval && (
@@ -266,7 +266,7 @@ export function ScanResults({
 
       {/* ---- Financial Risk Panel ---- */}
       {financialRisk && financialRisk.riskScore >= 3 && (
-        <div className="glass-card p-5">
+        <div className="glass-card p-5" data-tour="financial-risk">
           <div className="flex items-center gap-2 mb-4">
             <DollarSign size={18} className="text-danger" />
             <h3 className="text-base font-semibold text-text-primary">Financial Risk Assessment</h3>
@@ -547,7 +547,7 @@ export function ScanResults({
       )}
 
       {/* ---- Evidence section ---- */}
-      <div>
+      <div data-tour="evidence-section">
         <div className="flex items-center gap-2 mb-4">
           <ShieldCheck size={18} className="text-shield" />
           <h3 className="text-base font-semibold text-text-primary">What we found</h3>

@@ -11,6 +11,9 @@ import {
   ChevronDown,
   ChevronUp,
   Loader2,
+  TrendingUp,
+  Zap,
+  Radio,
 } from "lucide-react";
 import type { ThreatCategory, ThreatLevel } from "@/lib/algorithms/types";
 import { createBrowserClient } from "@/lib/supabase/client";
@@ -29,6 +32,15 @@ interface ScanRow {
   threat_level: string | null;
 }
 
+interface ThreatIntelData {
+  trendingCategories: { category: string; velocity: number; count: number }[];
+  emergingPatterns: { pattern: string; category: string; velocity: number; zScore: number }[];
+  outbreaks: { pattern: string; category: string; velocity: number; zScore: number }[];
+  predictions: { category: string; pattern: string; confidence: number; riskLevel: string }[];
+  dataPointCount: number;
+  message?: string;
+}
+
 // ---------------------------------------------------------------------------
 // Component
 // ---------------------------------------------------------------------------
@@ -37,6 +49,8 @@ export default function DashboardPage() {
   const [scans, setScans] = useState<ScanRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
+  const [intel, setIntel] = useState<ThreatIntelData | null>(null);
+  const [intelLoading, setIntelLoading] = useState(true);
 
   useEffect(() => {
     const supabase = createBrowserClient();
@@ -49,6 +63,12 @@ export default function DashboardPage() {
         setScans((data as ScanRow[]) ?? []);
         setLoading(false);
       });
+
+    fetch("/api/threat-intel")
+      .then((r) => r.json())
+      .then((d) => setIntel(d))
+      .catch(() => setIntel(null))
+      .finally(() => setIntelLoading(false));
   }, []);
 
   // Derived stats
@@ -111,7 +131,7 @@ export default function DashboardPage() {
       ) : (
         <>
           {/* Stat Cards */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4" data-tour="dashboard-stats">
             <DashStatCard
               icon={<Eye className="w-5 h-5" />}
               label="Total Scans"
@@ -145,7 +165,7 @@ export default function DashboardPage() {
           {/* Two-column layout: table + chart */}
           <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
             {/* Recent Scans Table */}
-            <div className="xl:col-span-2 glass-card p-0 overflow-hidden">
+            <div className="xl:col-span-2 glass-card p-0 overflow-hidden" data-tour="recent-scans">
               <div className="px-5 py-4 border-b border-border flex items-center justify-between">
                 <h2 className="font-semibold text-text-primary flex items-center gap-2">
                   <Clock className="w-4 h-4 text-shield" />
@@ -207,7 +227,7 @@ export default function DashboardPage() {
             </div>
 
             {/* Threat Distribution Chart */}
-            <div className="glass-card p-5">
+            <div className="glass-card p-5" data-tour="threat-distribution">
               <h2 className="font-semibold text-text-primary mb-5 flex items-center gap-2">
                 <Target className="w-4 h-4 text-shield" />
                 Threat Distribution
@@ -240,6 +260,109 @@ export default function DashboardPage() {
                 </p>
               </div>
             </div>
+          </div>
+
+          {/* Live Threat Intelligence */}
+          <div className="glass-card p-5">
+            <div className="flex items-center gap-2 mb-5">
+              <TrendingUp className="w-4 h-4 text-shield" />
+              <h2 className="font-semibold text-text-primary">Live Threat Intelligence</h2>
+              <span className="ml-auto text-[10px] font-mono text-text-muted">7-day window · refreshes every 5 min</span>
+            </div>
+
+            {intelLoading ? (
+              <div className="flex items-center gap-2 text-text-muted text-sm py-4">
+                <Loader2 size={14} className="animate-spin" />
+                Analyzing patterns…
+              </div>
+            ) : !intel || intel.message ? (
+              <p className="text-text-muted text-sm">{intel?.message ?? "No data available."}</p>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+
+                {/* Trending Categories */}
+                {intel.trendingCategories.length > 0 && (
+                  <div data-tour="trending-categories">
+                    <div className="flex items-center gap-1.5 mb-3">
+                      <Activity size={12} className="text-caution" />
+                      <span className="text-xs font-medium text-text-muted uppercase tracking-wider">Trending</span>
+                    </div>
+                    <div className="space-y-2">
+                      {intel.trendingCategories.slice(0, 5).map((cat, i) => (
+                        <div key={cat.category} className="flex items-center gap-2">
+                          <span className="text-[10px] font-mono text-text-muted w-3">{i + 1}</span>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex justify-between text-xs mb-0.5">
+                              <span className="text-text-secondary truncate">{cat.category.replace(/_/g, " ")}</span>
+                              <span className="text-text-muted font-mono">{cat.count}</span>
+                            </div>
+                            <div className="h-1 bg-slate-deep rounded-full overflow-hidden">
+                              <div
+                                className="h-full rounded-full bg-caution/70"
+                                style={{ width: `${Math.min(100, cat.velocity * 25)}%` }}
+                              />
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Outbreaks */}
+                {intel.outbreaks.length > 0 && (
+                  <div data-tour="active-outbreaks">
+                    <div className="flex items-center gap-1.5 mb-3">
+                      <Radio size={12} className="text-danger" />
+                      <span className="text-xs font-medium text-text-muted uppercase tracking-wider">Active Outbreaks</span>
+                    </div>
+                    <div className="space-y-2">
+                      {intel.outbreaks.map((ob) => (
+                        <div key={ob.pattern} className="px-3 py-2 rounded-lg bg-danger/5 border border-danger/15">
+                          <div className="text-xs font-medium text-danger truncate">{ob.pattern.replace(/-/g, " ").toUpperCase()}</div>
+                          <div className="text-[10px] font-mono text-text-muted mt-0.5">
+                            z-score: {ob.zScore} · vel: {ob.velocity}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Predictions */}
+                {intel.predictions.length > 0 && (
+                  <div data-tour="predictions">
+                    <div className="flex items-center gap-1.5 mb-3">
+                      <Zap size={12} className="text-shield" />
+                      <span className="text-xs font-medium text-text-muted uppercase tracking-wider">Next Wave</span>
+                    </div>
+                    <div className="space-y-2">
+                      {intel.predictions.map((pred) => (
+                        <div key={pred.pattern} className="px-3 py-2 rounded-lg bg-shield/5 border border-shield/15">
+                          <div className="flex items-center justify-between gap-2 mb-0.5">
+                            <span className="text-xs text-text-secondary truncate">{pred.category.replace(/_/g, " ")}</span>
+                            <span className={`text-[10px] font-mono px-1.5 py-0.5 rounded border ${
+                              pred.riskLevel === "CRITICAL" ? "bg-critical/10 text-critical border-critical/20" :
+                              pred.riskLevel === "HIGH"     ? "bg-danger/10 text-danger border-danger/20" :
+                              "bg-caution/10 text-caution border-caution/20"
+                            }`}>{pred.riskLevel}</span>
+                          </div>
+                          <div className="text-[10px] font-mono text-text-muted">
+                            {Math.round(pred.confidence * 100)}% confidence
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {intel.trendingCategories.length === 0 && intel.outbreaks.length === 0 && intel.predictions.length === 0 && (
+                  <div className="col-span-3 text-text-muted text-sm text-center py-4">
+                    Patterns are still accumulating — check back after more scans are processed.
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         </>
       )}

@@ -1,7 +1,7 @@
 // ScamShield Browser Extension — popup.js
 // Calls the ScamShield API and renders the result
 
-const API_URL = "https://scamshield-green.vercel.app/api/scan";
+const API_URL = "https://scamshieldy.com/api/scan";
 const MAX_EVIDENCE = 6;
 
 // ── DOM refs ──────────────────────────────────────────────────────────────────
@@ -93,35 +93,44 @@ function renderResult(data) {
   threatLevel.className   = `threat-level color-${lvl}`;
   categoryEl.textContent  = cat;
 
+  // Safe helper: create a badge span using textContent only (no innerHTML with untrusted data)
+  function makeBadge(cls, text) {
+    const span = document.createElement("span");
+    span.className = "meta-badge " + cls;
+    span.textContent = text;
+    return span;
+  }
+
   // WHOIS/SSL + IP meta badges
-  metaRow.innerHTML = "";
+  while (metaRow.firstChild) metaRow.removeChild(metaRow.firstChild);
   if (data.whoisSsl) {
     const w = data.whoisSsl;
 
     // Domain age badge
     if (w.domainAge !== null) {
-      const age = w.domainAge;
-      let cls = "badge-ok";
-      let label = `${age}d old`;
-      if (age < 7)   { cls = "badge-bad";  label = `${age}d old ⚠`; }
-      else if (age < 90) { cls = "badge-warn"; label = `${age}d old`; }
-      metaRow.insertAdjacentHTML("beforeend", `<span class="meta-badge ${cls}">Domain: ${label}</span>`);
+      const age = Number(w.domainAge);
+      if (Number.isFinite(age)) {
+        let cls = "badge-ok";
+        if (age < 7)   cls = "badge-bad";
+        else if (age < 90) cls = "badge-warn";
+        metaRow.appendChild(makeBadge(cls, "Domain: " + age + "d old" + (age < 7 ? " ⚠" : "")));
+      }
     } else {
-      metaRow.insertAdjacentHTML("beforeend", `<span class="meta-badge badge-gray">Domain age: unknown</span>`);
+      metaRow.appendChild(makeBadge("badge-gray", "Domain age: unknown"));
     }
 
     // SSL badge
     if (w.sslValid === true) {
-      metaRow.insertAdjacentHTML("beforeend", `<span class="meta-badge badge-ok">SSL: valid ✓</span>`);
+      metaRow.appendChild(makeBadge("badge-ok", "SSL: valid ✓"));
     } else if (w.sslValid === false) {
-      metaRow.insertAdjacentHTML("beforeend", `<span class="meta-badge badge-bad">SSL: invalid ✗</span>`);
+      metaRow.appendChild(makeBadge("badge-bad", "SSL: invalid ✗"));
     } else {
-      metaRow.insertAdjacentHTML("beforeend", `<span class="meta-badge badge-gray">SSL: unknown</span>`);
+      metaRow.appendChild(makeBadge("badge-gray", "SSL: unknown"));
     }
 
-    // Registrar
-    if (w.registrar) {
-      metaRow.insertAdjacentHTML("beforeend", `<span class="meta-badge badge-gray">${w.registrar.substring(0, 22)}</span>`);
+    // Registrar — textContent only, no interpolation
+    if (w.registrar && typeof w.registrar === "string") {
+      metaRow.appendChild(makeBadge("badge-gray", w.registrar.substring(0, 22)));
     }
   }
 
@@ -129,43 +138,55 @@ function renderResult(data) {
   if (data.ipIntelligence) {
     const ip = data.ipIntelligence;
 
-    // Country risk badge
     const countryRiskMap = { critical: "badge-bad", high: "badge-bad", medium: "badge-warn", low: "badge-ok" };
     const countryCls = countryRiskMap[ip.countryRiskLevel] || "badge-gray";
-    const countryLabel = ip.city
-      ? `${ip.countryCode} · ${ip.city.substring(0, 14)}`
-      : ip.countryCode;
-    metaRow.insertAdjacentHTML("beforeend", `<span class="meta-badge ${countryCls}">📍 ${countryLabel}</span>`);
+    const countryCode = typeof ip.countryCode === "string" ? ip.countryCode.substring(0, 3) : "??";
+    const city = typeof ip.city === "string" ? ip.city.substring(0, 14) : "";
+    metaRow.appendChild(makeBadge(countryCls, "📍 " + countryCode + (city ? " · " + city : "")));
 
-    // Hosting type badge
     const hostingLabelMap = {
-      tor:       { cls: "badge-bad",  label: "🚨 TOR node" },
-      vpn_proxy: { cls: "badge-bad",  label: "🛡 VPN/Proxy" },
-      vps:       { cls: "badge-warn", label: "🖥 VPS hosting" },
-      cloud:     { cls: "badge-warn", label: "☁ Cloud hosted" },
-      residential: { cls: "badge-ok", label: "🏠 Residential" },
-      unknown:   { cls: "badge-gray", label: "Host: unknown" },
+      tor:         { cls: "badge-bad",  label: "🚨 TOR node" },
+      vpn_proxy:   { cls: "badge-bad",  label: "🛡 VPN/Proxy" },
+      vps:         { cls: "badge-warn", label: "🖥 VPS hosting" },
+      cloud:       { cls: "badge-warn", label: "☁ Cloud hosted" },
+      residential: { cls: "badge-ok",  label: "🏠 Residential" },
+      unknown:     { cls: "badge-gray", label: "Host: unknown" },
     };
-    const h = hostingLabelMap[ip.hostingCategory] || hostingLabelMap.unknown;
-    metaRow.insertAdjacentHTML("beforeend", `<span class="meta-badge ${h.cls}">${h.label}</span>`);
+    const hKey = String(ip.hostingCategory || "unknown");
+    const h = hostingLabelMap[hKey] || hostingLabelMap.unknown;
+    metaRow.appendChild(makeBadge(h.cls, h.label));
 
-    // IP address badge (greyed)
-    metaRow.insertAdjacentHTML("beforeend", `<span class="meta-badge badge-gray">${ip.ip}</span>`);
+    if (typeof ip.ip === "string" && /^[\d.:a-f]+$/i.test(ip.ip)) {
+      metaRow.appendChild(makeBadge("badge-gray", ip.ip));
+    }
   }
 
-  // Evidence
-  evidenceList.innerHTML = "";
+  // Evidence — textContent only (XSS fix: was using innerHTML with ev.finding)
+  while (evidenceList.firstChild) evidenceList.removeChild(evidenceList.firstChild);
   const evidence = (data.evidence || []).slice(0, MAX_EVIDENCE);
   for (const ev of evidence) {
     const sev = (ev.severity || "low").toLowerCase();
-    const dotClass = ["critical", "high", "medium", "low"].includes(sev) ? `dot-${sev}` : "dot-low";
+    const dotClass = ["critical", "high", "medium", "low"].includes(sev) ? "dot-" + sev : "dot-low";
     const li = document.createElement("li");
     li.className = "evidence-item";
-    li.innerHTML = `<span class="dot ${dotClass}"></span><span>${ev.finding}</span>`;
+    const dot = document.createElement("span");
+    dot.className = "dot " + dotClass;
+    const txt = document.createElement("span");
+    txt.textContent = typeof ev.finding === "string" ? ev.finding : "Unknown finding";
+    li.appendChild(dot);
+    li.appendChild(txt);
     evidenceList.appendChild(li);
   }
   if (evidence.length === 0) {
-    evidenceList.innerHTML = `<li class="evidence-item"><span class="dot dot-low"></span><span>No suspicious signals detected</span></li>`;
+    const li = document.createElement("li");
+    li.className = "evidence-item";
+    const dot = document.createElement("span");
+    dot.className = "dot dot-low";
+    const txt = document.createElement("span");
+    txt.textContent = "No suspicious signals detected";
+    li.appendChild(dot);
+    li.appendChild(txt);
+    evidenceList.appendChild(li);
   }
 
   // Confidence interval
@@ -211,8 +232,31 @@ btnCurrent.addEventListener("click", () => {
   }
 });
 
+// ── Settings link ──────────────────────────────────────────────────────────────
+var settingsLink = document.getElementById("settingsLink");
+if (settingsLink) {
+  settingsLink.addEventListener("click", function (e) {
+    e.preventDefault();
+    if (typeof chrome !== "undefined" && chrome.runtime && chrome.runtime.openOptionsPage) {
+      chrome.runtime.openOptionsPage();
+    }
+  });
+}
+
 // ── Auto-fill current tab URL on open ─────────────────────────────────────────
 document.addEventListener("DOMContentLoaded", () => {
+  // Check for pre-scan content from context menu
+  if (typeof chrome !== "undefined" && chrome.storage) {
+    chrome.storage.session.get('ss_popup_prescan', function (data) {
+      if (data.ss_popup_prescan) {
+        inputField.value = data.ss_popup_prescan;
+        chrome.storage.session.remove('ss_popup_prescan');
+        scan(data.ss_popup_prescan);
+        return;
+      }
+    });
+  }
+
   if (typeof chrome !== "undefined" && chrome.tabs) {
     chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
       const url = tabs[0]?.url || "";

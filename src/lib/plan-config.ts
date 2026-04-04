@@ -7,21 +7,26 @@ import { createServiceRoleClient } from "@/lib/supabase/client";
 export type Plan = "free" | "starter" | "pro" | "team" | "organization" | "enterprise";
 
 export interface PlanLimits {
-  rollingLimit: number; // max scans per 30-day rolling window (0 = unlimited)
-  seats: number;        // max team seats (1 = individual)
-  apiAccess: boolean;
+  rollingLimit: number;           // max scans per 30-day rolling window (0 = unlimited)
+  seats: number;                  // max team seats (1 = individual)
+  apiAccess: boolean;             // can create API keys
+  apiKeyDailyLimit: number;       // req/day for free-tier API keys (0 = no API access)
+  apiKeyProDailyLimit: number;    // req/day for pro-tier API keys (0 = no API access)
+  bulkScanLimit: number;          // max items per /api/v1/scan/bulk call (0 = no access)
+  conversationRiskAccess: boolean; // access to /api/v2/conversation-risk
+  conversationRiskFull: boolean;  // full IP+profile analysis vs arc-only
 }
 
 // Defaults used if DB unreachable
 export const ANONYMOUS_SCAN_LIMIT_DEFAULT = 4;
 
 export const PLAN_DEFAULTS: Record<Plan, PlanLimits> = {
-  free:         { rollingLimit: 50,      seats: 1,  apiAccess: false },
-  starter:      { rollingLimit: 200,     seats: 1,  apiAccess: false },
-  pro:          { rollingLimit: 500,     seats: 1,  apiAccess: false },
-  team:         { rollingLimit: 5000,    seats: 5,  apiAccess: true  },
-  organization: { rollingLimit: 20000,   seats: 15, apiAccess: true  },
-  enterprise:   { rollingLimit: 100000,  seats: 999, apiAccess: true },
+  free:         { rollingLimit: 50,      seats: 1,   apiAccess: false, apiKeyDailyLimit: 0,      apiKeyProDailyLimit: 0,      bulkScanLimit: 0,  conversationRiskAccess: false, conversationRiskFull: false },
+  starter:      { rollingLimit: 200,     seats: 1,   apiAccess: false, apiKeyDailyLimit: 0,      apiKeyProDailyLimit: 0,      bulkScanLimit: 0,  conversationRiskAccess: false, conversationRiskFull: false },
+  pro:          { rollingLimit: 500,     seats: 1,   apiAccess: true,  apiKeyDailyLimit: 100,    apiKeyProDailyLimit: 0,      bulkScanLimit: 10, conversationRiskAccess: true,  conversationRiskFull: false },
+  team:         { rollingLimit: 5000,    seats: 5,   apiAccess: true,  apiKeyDailyLimit: 100,    apiKeyProDailyLimit: 10000,  bulkScanLimit: 50, conversationRiskAccess: true,  conversationRiskFull: true  },
+  organization: { rollingLimit: 20000,   seats: 15,  apiAccess: true,  apiKeyDailyLimit: 100,    apiKeyProDailyLimit: 10000,  bulkScanLimit: 50, conversationRiskAccess: true,  conversationRiskFull: true  },
+  enterprise:   { rollingLimit: 100000,  seats: 999, apiAccess: true,  apiKeyDailyLimit: 100,    apiKeyProDailyLimit: 10000,  bulkScanLimit: 50, conversationRiskAccess: true,  conversationRiskFull: true  },
 };
 
 export const PLAN_PRICES: Record<Plan, { monthly: number; annual: number }> = {
@@ -92,4 +97,19 @@ export function isPlanUnlimited(_plan: Plan): boolean {
 // Plans that get API access
 export function hasApiAccess(plan: Plan): boolean {
   return PLAN_DEFAULTS[plan].apiAccess;
+}
+
+// Plans that get conversation risk API access
+export function hasConversationRiskAccess(plan: Plan): boolean {
+  return PLAN_DEFAULTS[plan].conversationRiskAccess;
+}
+
+// Plans that get full conversation risk (IP + profile scoring)
+export function hasConversationRiskFull(plan: Plan): boolean {
+  return PLAN_DEFAULTS[plan].conversationRiskFull;
+}
+
+// Bulk scan item limit for a plan
+export function getBulkScanLimit(plan: Plan): number {
+  return PLAN_DEFAULTS[plan].bulkScanLimit;
 }

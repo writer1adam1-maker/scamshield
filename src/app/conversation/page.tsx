@@ -256,10 +256,11 @@ export default function ConversationPage() {
       </div>
 
       {/* ── Input card ── */}
-      <div className="glass-card p-5 mb-5">
+      <div className="glass-card p-5 mb-5" data-tour="conversation-input">
         {/* Format hint toggle */}
         <button
           onClick={() => setShowFormats(f => !f)}
+          data-tour="conversation-formats"
           className="flex items-center gap-1.5 text-[11px] font-mono text-text-muted hover:text-shield transition-colors mb-3"
         >
           {showFormats ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
@@ -283,8 +284,8 @@ export default function ConversationPage() {
             value={text}
             onChange={e => setText(e.target.value)}
             placeholder={`[01/15/2024, 9:30 AM] Alex: Hey! I feel like I've known you forever...`}
-            rows={10}
-            className="w-full rounded-xl text-text-primary text-xs font-mono p-3 resize-y outline-none transition-all placeholder:text-text-muted"
+            rows={8}
+            className="w-full rounded-xl text-text-primary text-xs font-mono p-3 resize-y outline-none transition-all placeholder:text-text-muted min-h-[160px]"
             style={{
               background: 'rgba(18,18,28,0.7)',
               border: `1px solid ${text ? 'rgba(0,212,255,0.25)' : 'rgba(42,42,68,1)'}`,
@@ -294,7 +295,7 @@ export default function ConversationPage() {
             <span className="text-[10px] font-mono text-text-muted">{text.length.toLocaleString()} chars</span>
             {text.trim() && (() => {
               const words = text.trim().split(/\s+/).filter(Boolean).length;
-              const scans = Math.min(10, Math.max(1, Math.floor(words / 1000)));
+              const scans = Math.min(10, Math.max(1, Math.round(words / 1000)));
               return (
                 <span className="text-[10px] font-mono text-caution">
                   ~{words.toLocaleString()} words · costs {scans} scan{scans > 1 ? "s" : ""}
@@ -305,10 +306,10 @@ export default function ConversationPage() {
           </div>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
           <button
             onClick={() => fileRef.current?.click()}
-            className="flex items-center gap-2 px-4 py-2 text-sm border rounded-xl text-text-muted hover:text-text-secondary transition-colors"
+            className="flex items-center justify-center gap-2 px-4 py-2 text-sm border rounded-xl text-text-muted hover:text-text-secondary transition-colors"
             style={{ borderColor: 'rgba(42,42,68,1)' }}
           >
             <Upload size={14} />
@@ -355,6 +356,7 @@ export default function ConversationPage() {
           <div
             className="glass-card p-5 flex items-start gap-5"
             style={{ borderColor: arcTypeBorderColor(result.arcType) }}
+            data-tour="arc-risk-gauge"
           >
             {/* Risk gauge */}
             <div className="shrink-0 text-center">
@@ -401,7 +403,7 @@ export default function ConversationPage() {
           </div>
 
           {/* Timeline */}
-          <div className="glass-card p-5">
+          <div className="glass-card p-5" data-tour="phase-timeline">
             <div className="text-[10px] font-mono text-text-muted uppercase tracking-widest mb-3">
               Conversation Timeline — Dominant Phase per Segment
             </div>
@@ -446,7 +448,7 @@ export default function ConversationPage() {
           </div>
 
           {/* Phase detection grid */}
-          <div>
+          <div data-tour="phase-cards">
             <div className="text-[10px] font-mono text-text-muted uppercase tracking-widest mb-3">
               Phase Detection — Click any card to expand evidence
             </div>

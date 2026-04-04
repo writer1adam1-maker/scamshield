@@ -1857,22 +1857,45 @@ export function runImmuneRepertoire(
     details.push(`ZERO-DAY ALERT: ${zeroDayResult.details}`);
   }
 
-  // Compute score from matched antibodies
-  // Use inclusion-exclusion for combining multiple detections:
-  // P(scam) = 1 - product(1 - affinity_i)
-  let combinedProbability = 1;
+  // Compute score from matched antibodies using cluster-deduplication:
+  // Only count the highest-affinity match per cluster to prevent inflation.
+  // Antibodies NOT in any cluster contribute individually.
+  const clusterBestAffinity = new Map<string, { affinity: number; match: AntibodyMatch }>();
+  const unclusteredMatches: AntibodyMatch[] = [];
+
   for (const match of matchedAntibodies) {
-    combinedProbability *= (1 - match.affinity);
     details.push(`Matched [${match.antibodyId}] "${match.name}" — affinity=${match.affinity.toFixed(3)}, matched: "${match.matchedText.substring(0, 80)}"`);
+
+    // Find which cluster this antibody belongs to
+    const cluster = activatedClusters.find(c => c.antibodyIds?.includes(match.antibodyId));
+    if (cluster) {
+      const existing = clusterBestAffinity.get(cluster.clusterId);
+      if (!existing || match.affinity > existing.affinity) {
+        clusterBestAffinity.set(cluster.clusterId, { affinity: match.affinity, match });
+      }
+    } else {
+      unclusteredMatches.push(match);
+    }
+  }
+
+  // Combine: best-per-cluster + all unclustered, using inclusion-exclusion
+  const dedupedMatches = [
+    ...Array.from(clusterBestAffinity.values()).map(v => v.match),
+    ...unclusteredMatches,
+  ];
+
+  let combinedProbability = 1;
+  for (const match of dedupedMatches) {
+    combinedProbability *= (1 - match.affinity);
   }
   let rawScore = (1 - combinedProbability) * 100;
 
-  // Cluster activation bonus: when >50% of a cluster fires, boost score
-  for (const cluster of activatedClusters) {
-    if (cluster.clusterActivation > 0.5) {
-      rawScore = Math.min(100, rawScore * (1 + cluster.clusterActivation * 0.15));
-      details.push(`Cluster "${cluster.clusterId}" bonus applied: activation=${(cluster.clusterActivation * 100).toFixed(1)}%`);
-    }
+  // Cross-cluster synergy bonus: multiple DIFFERENT clusters activating
+  // is evidence of a coordinated multi-vector scam
+  const activeClusterCount = Array.from(clusterBestAffinity.keys()).length;
+  if (activeClusterCount >= 2) {
+    rawScore = Math.min(100, rawScore * (1 + (activeClusterCount - 1) * 0.1));
+    details.push(`Cross-cluster synergy: ${activeClusterCount} clusters active — bonus applied`);
   }
 
   // Zero-day bonus

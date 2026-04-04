@@ -50,8 +50,8 @@ export interface ApiKeyRateLimitResult {
 
 /**
  * Track API key usage and enforce daily limits.
- * Free tier: 100 requests/day
- * Pro tier: 10,000 requests/day
+ * free key: 100 requests/day
+ * pro key:  10,000 requests/day
  */
 export function checkApiKeyRateLimit(
   keyId: string,
@@ -60,6 +60,7 @@ export function checkApiKeyRateLimit(
   cleanupExpired();
 
   const limit = plan === "pro" ? 10_000 : 100;
+  // Note: these match PLAN_DEFAULTS.apiKeyDailyLimit / apiKeyProDailyLimit in plan-config.ts
   const now = Date.now();
   let entry = store.get(keyId);
 

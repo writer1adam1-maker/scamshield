@@ -44,35 +44,38 @@ function getAdaptiveThreshold(input: AnalysisInput): number {
 function computeCorrelationDiscount(newSignal: Signal, existingSignals: Signal[]): number {
   if (existingSignals.length === 0) return 1.0;
 
-  let maxCorrelation = 0;
+  let maxSameGroupCorrelation = 0;
+  const existingGroups = new Set<string>();
 
   for (const existing of existingSignals) {
-    let correlation = 0;
-
-    // Same type = partial correlation
-    if (existing.type === newSignal.type) {
-      correlation += 0.2;
-    }
-
-    // Same group in rawData = strong correlation
     const existingGroup = existing.rawData?.group as string | undefined;
-    const newGroup = newSignal.rawData?.group as string | undefined;
-    if (existingGroup && newGroup && existingGroup === newGroup) {
-      correlation += 0.5;
-    }
+    if (existingGroup) existingGroups.add(existingGroup);
 
-    // Same check type = very strong correlation
+    // Only discount signals from the SAME group + same check (true duplicates)
+    const newGroup = newSignal.rawData?.group as string | undefined;
     const existingCheck = existing.rawData?.check as string | undefined;
     const newCheck = newSignal.rawData?.check as string | undefined;
-    if (existingCheck && newCheck && existingCheck === newCheck) {
-      correlation += 0.3;
-    }
 
-    maxCorrelation = Math.max(maxCorrelation, correlation);
+    if (existingCheck && newCheck && existingCheck === newCheck) {
+      // Same exact check = strong duplicate discount
+      maxSameGroupCorrelation = Math.max(maxSameGroupCorrelation, 0.7);
+    } else if (existingGroup && newGroup && existingGroup === newGroup && existing.type === newSignal.type) {
+      // Same group + same type = moderate discount (similar signals)
+      maxSameGroupCorrelation = Math.max(maxSameGroupCorrelation, 0.4);
+    }
   }
 
-  // Discount factor: 1.0 means no discount, lower means more discount
-  return Math.max(0.2, 1.0 - maxCorrelation);
+  // Discount same-group duplicates (prevents inflated scores from redundant signals)
+  const duplicateDiscount = Math.max(0.3, 1.0 - maxSameGroupCorrelation);
+
+  // Cross-group synergy bonus: different signal groups reinforcing each other
+  // is evidence of a coordinated scam, not a reason to reduce confidence
+  const newGroup = newSignal.rawData?.group as string | undefined;
+  const uniqueGroups = new Set(existingGroups);
+  if (newGroup) uniqueGroups.add(newGroup);
+  const crossGroupBonus = uniqueGroups.size >= 3 ? 1.0 + (uniqueGroups.size - 2) * 0.1 : 1.0;
+
+  return duplicateDiscount * Math.min(1.5, crossGroupBonus);
 }
 
 // ---------------------------------------------------------------------------

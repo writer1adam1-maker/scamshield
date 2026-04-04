@@ -75,19 +75,33 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Insert referral record
-    await dbAny.from("referrals").insert({
+    // Atomically claim the referral: update referred_by only if it's still null
+    // This prevents race conditions where two concurrent requests both pass the check above
+    const { count: claimCount } = await dbAny
+      .from("users")
+      .update({ referred_by: code, scan_bonus_pool: refConfig.referredBonus })
+      .eq("id", user.id)
+      .is("referred_by", null)
+      .select("id", { count: "exact", head: true });
+
+    if (!claimCount || claimCount === 0) {
+      // Another concurrent request already claimed a referral for this user
+      return NextResponse.json({ error: "You have already used a referral code." }, { status: 409 });
+    }
+
+    // Insert referral record (UNIQUE constraint on referred_id prevents duplicates at DB level)
+    const { error: insertError } = await dbAny.from("referrals").insert({
       referrer_id: referrerRow.id,
       referred_id: user.id,
       referral_code: code,
       scans_awarded: refConfig.referredBonus,
     });
 
-    // Award bonus scans to referred user (into bonus pool)
-    await dbAny
-      .from("users")
-      .update({ referred_by: code, scan_bonus_pool: refConfig.referredBonus })
-      .eq("id", user.id);
+    if (insertError) {
+      // Rollback the referred_by claim if referral insert fails
+      await dbAny.from("users").update({ referred_by: null, scan_bonus_pool: 0 }).eq("id", user.id);
+      return NextResponse.json({ error: "You have already used a referral code." }, { status: 409 });
+    }
 
     // Award bonus scans to referrer
     await dbAny

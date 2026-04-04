@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import {
   Settings, Bell, Palette, User, Trash2, LogOut, Loader2, CheckCircle2,
-  AlertTriangle, Key, Gift, Copy, ShieldAlert,
+  AlertTriangle, Key, Gift, Copy, ShieldAlert, Puzzle, Plus, X as XIcon,
 } from "lucide-react";
 import { createBrowserClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
@@ -43,6 +43,13 @@ export default function SettingsPage() {
   const [deletingAccount, setDeletingAccount] = useState(false);
   const [copiedCode, setCopiedCode] = useState(false);
   const [theme, setTheme] = useState<ThemeId>("dark");
+  // API keys state
+  const [apiKeys, setApiKeys] = useState<{ key_prefix: string; plan: string; label: string; created_at: string; requests_total: number }[]>([]);
+  const [apiKeysLoading, setApiKeysLoading] = useState(false);
+  const [newKeyLabel, setNewKeyLabel] = useState("");
+  const [creatingKey, setCreatingKey] = useState(false);
+  const [revealedKey, setRevealedKey] = useState<string | null>(null);
+  const [copiedKey, setCopiedKey] = useState(false);
   const router = useRouter();
 
   const isAdmin = user ? ADMIN_EMAILS.includes((user.email || "").toLowerCase()) : false;
@@ -76,7 +83,51 @@ export default function SettingsPage() {
       setLoadingUser(false);
     }
     load();
+    loadApiKeys();
   }, []);
+
+  async function loadApiKeys() {
+    setApiKeysLoading(true);
+    try {
+      const res = await fetch("/api/extension/keys");
+      if (res.ok) {
+        const data = await res.json();
+        setApiKeys(data.keys ?? []);
+      }
+    } catch { /* ignore */ }
+    setApiKeysLoading(false);
+  }
+
+  async function handleCreateKey() {
+    setCreatingKey(true);
+    setRevealedKey(null);
+    try {
+      const res = await fetch("/api/extension/keys", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ label: newKeyLabel || "Browser Extension" }),
+      });
+      const data = await res.json();
+      if (!res.ok) { alert(data.error || "Failed to create key"); return; }
+      setRevealedKey(data.key);
+      setNewKeyLabel("");
+      await loadApiKeys();
+    } catch { alert("Failed to create API key."); }
+    setCreatingKey(false);
+  }
+
+  async function handleRevokeKey(prefix: string) {
+    if (!confirm("Revoke this API key? Any device using it will lose access.")) return;
+    try {
+      await fetch("/api/extension/keys", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ prefix }),
+      });
+      await loadApiKeys();
+      if (revealedKey?.startsWith(prefix)) setRevealedKey(null);
+    } catch { alert("Failed to revoke key."); }
+  }
 
   function applyTheme(t: ThemeId) {
     setTheme(t);
@@ -137,7 +188,7 @@ export default function SettingsPage() {
       )}
 
       {/* Account */}
-      <section className="glass-card p-6 space-y-4">
+      <section className="glass-card p-6 space-y-4" data-tour="settings-account">
         <div className="flex items-center gap-2 mb-2">
           <User className="w-5 h-5 text-shield" />
           <h2 className="text-lg font-semibold text-text-primary">Account</h2>
@@ -269,8 +320,99 @@ export default function SettingsPage() {
         )}
       </section>
 
+      {/* API Keys — for browser extension & integrations */}
+      {user && (
+        <section className="glass-card p-6 space-y-4" data-tour="settings-api-keys">
+          <div className="flex items-center gap-2 mb-2">
+            <Puzzle className="w-5 h-5 text-shield" />
+            <h2 className="text-lg font-semibold text-text-primary">API Keys</h2>
+            <span className="ml-auto text-xs text-text-muted">for Browser Extension &amp; integrations</span>
+          </div>
+
+          {/* Revealed key banner */}
+          {revealedKey && (
+            <div className="p-3 rounded-xl bg-safe/5 border border-safe/20 space-y-2">
+              <div className="flex items-center gap-2">
+                <CheckCircle2 size={13} className="text-safe shrink-0" />
+                <span className="text-xs font-semibold text-safe">New API key created — copy it now, it won&apos;t be shown again</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="flex-1 px-3 py-2 rounded-lg bg-void/60 border border-border font-mono text-xs text-shield tracking-wider overflow-x-auto whitespace-nowrap">
+                  {revealedKey}
+                </span>
+                <button
+                  onClick={() => { navigator.clipboard.writeText(revealedKey); setCopiedKey(true); setTimeout(() => setCopiedKey(false), 2000); }}
+                  className="flex items-center gap-1.5 px-3 py-2 rounded-lg border border-border text-xs text-text-secondary hover:text-shield hover:border-shield/30 transition-colors shrink-0"
+                >
+                  {copiedKey ? <CheckCircle2 size={12} className="text-safe" /> : <Copy size={12} />}
+                  {copiedKey ? "Copied!" : "Copy"}
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Create new key */}
+          <div className="flex items-center gap-2">
+            <input
+              type="text"
+              value={newKeyLabel}
+              onChange={(e) => setNewKeyLabel(e.target.value)}
+              placeholder="Label (e.g. My Chrome Extension)"
+              maxLength={60}
+              className="flex-1 px-3 py-2 rounded-lg bg-abyss/60 border border-border text-sm text-text-primary placeholder:text-text-muted/50 outline-none focus:border-shield/40 transition-colors"
+            />
+            <button
+              onClick={handleCreateKey}
+              disabled={creatingKey}
+              className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-shield/10 border border-shield/20 text-shield text-xs font-semibold hover:bg-shield/15 transition-colors disabled:opacity-50"
+            >
+              {creatingKey ? <Loader2 size={13} className="animate-spin" /> : <Plus size={13} />}
+              Create Key
+            </button>
+          </div>
+
+          {/* Keys list */}
+          {apiKeysLoading ? (
+            <div className="flex items-center gap-2 text-text-muted text-sm">
+              <Loader2 size={13} className="animate-spin" /> Loading keys…
+            </div>
+          ) : apiKeys.length === 0 ? (
+            <p className="text-xs text-text-muted">No API keys yet. Create one to use with the browser extension.</p>
+          ) : (
+            <div className="space-y-2">
+              {apiKeys.map((k) => (
+                <div key={k.key_prefix} className="flex items-center gap-3 p-3 rounded-lg bg-abyss/60 border border-border/40">
+                  <Key size={13} className="text-shield shrink-0" />
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <span className="font-mono text-xs text-shield">{k.key_prefix}…</span>
+                      <span className="px-1.5 py-0.5 rounded text-[9px] font-mono bg-shield/10 text-shield border border-shield/20">{k.plan}</span>
+                    </div>
+                    <div className="text-[10px] text-text-muted mt-0.5">
+                      {k.label} · {k.requests_total} requests · Created {new Date(k.created_at).toLocaleDateString()}
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => handleRevokeKey(k.key_prefix)}
+                    className="p-1.5 text-text-muted hover:text-danger transition-colors rounded-lg hover:bg-danger/10"
+                    title="Revoke key"
+                  >
+                    <XIcon size={13} />
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+
+          <p className="text-[10px] text-text-muted">
+            Paste your API key into the ScamShield browser extension settings to enable authenticated scanning.
+            Free keys: 100 req/day. Pro keys: 10,000 req/day.
+          </p>
+        </section>
+      )}
+
       {/* Theme picker */}
-      <section className="glass-card p-6 space-y-4">
+      <section className="glass-card p-6 space-y-4" data-tour="settings-theme">
         <div className="flex items-center gap-2 mb-2">
           <Palette className="w-5 h-5 text-shield" />
           <h2 className="text-lg font-semibold text-text-primary">Theme</h2>
@@ -338,7 +480,7 @@ export default function SettingsPage() {
 
       {/* Danger Zone */}
       {user && (
-        <section className="glass-card p-6 space-y-4 border-danger/20">
+        <section className="glass-card p-6 space-y-4 border-danger/20" data-tour="settings-danger">
           <div className="flex items-center gap-2 mb-2">
             <Trash2 className="w-5 h-5 text-danger" />
             <h2 className="text-lg font-semibold text-danger">Danger Zone</h2>

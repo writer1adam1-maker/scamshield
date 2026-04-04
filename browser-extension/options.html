@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ScamShield — Settings</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: #0d1117;
+    color: #c9d1d9;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    font-size: 14px;
+    min-width: 480px;
+    padding: 32px;
+  }
+  .header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 28px;
+    padding-bottom: 20px;
+    border-bottom: 1px solid #1e2d3d;
+  }
+  .header-icon { font-size: 28px; }
+  .header h1 { font-size: 20px; font-weight: 700; color: #e6edf3; }
+  .header p { font-size: 12px; color: #6e7681; margin-top: 2px; }
+
+  .section {
+    background: #161b22;
+    border: 1px solid #1e2d3d;
+    border-radius: 10px;
+    padding: 20px;
+    margin-bottom: 16px;
+  }
+  .section-title {
+    font-size: 13px;
+    font-weight: 600;
+    color: #8892a4;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    margin-bottom: 14px;
+  }
+
+  label { display: block; font-size: 13px; color: #8892a4; margin-bottom: 6px; }
+
+  .api-row {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+  }
+  input[type="text"], input[type="password"] {
+    flex: 1;
+    background: #0d1117;
+    border: 1px solid #1e2d3d;
+    border-radius: 6px;
+    padding: 9px 12px;
+    color: #e6edf3;
+    font-size: 13px;
+    font-family: monospace;
+    outline: none;
+    transition: border-color 0.15s;
+  }
+  input[type="text"]:focus, input[type="password"]:focus { border-color: #00d4ff60; }
+
+  .btn {
+    padding: 9px 16px;
+    border-radius: 6px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    border: none;
+    transition: background 0.15s;
+  }
+  .btn-primary { background: #00d4ff20; color: #00d4ff; border: 1px solid #00d4ff40; }
+  .btn-primary:hover { background: #00d4ff30; }
+  .btn-danger  { background: #f4433615; color: #f44336; border: 1px solid #f4433630; }
+  .btn-danger:hover  { background: #f4433625; }
+
+  .status {
+    margin-top: 10px;
+    font-size: 12px;
+    padding: 8px 12px;
+    border-radius: 6px;
+    display: none;
+  }
+  .status.ok  { background: #00e5a010; border: 1px solid #00e5a030; color: #00e5a0; display: block; }
+  .status.err { background: #f4433610; border: 1px solid #f4433630; color: #f44336; display: block; }
+  .status.info{ background: #00d4ff10; border: 1px solid #00d4ff30; color: #00d4ff; display: block; }
+
+  .toggle-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .toggle-label { font-size: 13px; color: #c9d1d9; }
+  .toggle-desc  { font-size: 11px; color: #6e7681; margin-top: 2px; }
+
+  .toggle {
+    position: relative;
+    width: 44px;
+    height: 24px;
+    border-radius: 12px;
+    background: #21262d;
+    cursor: pointer;
+    border: 1px solid #30363d;
+    transition: background 0.2s;
+    flex-shrink: 0;
+  }
+  .toggle.on { background: #00d4ff; border-color: #00d4ff; }
+  .toggle::after {
+    content: '';
+    position: absolute;
+    top: 2px;
+    left: 2px;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: white;
+    transition: transform 0.2s;
+  }
+  .toggle.on::after { transform: translateX(20px); }
+
+  .stats-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+  }
+  .stat-box {
+    background: #0d1117;
+    border: 1px solid #1e2d3d;
+    border-radius: 8px;
+    padding: 14px;
+    text-align: center;
+  }
+  .stat-num { font-size: 22px; font-weight: 700; color: #00d4ff; font-variant-numeric: tabular-nums; }
+  .stat-lbl { font-size: 10px; color: #6e7681; margin-top: 2px; }
+
+  .footer {
+    margin-top: 24px;
+    text-align: center;
+    font-size: 11px;
+    color: #3c4754;
+  }
+  .footer a { color: #00d4ff; text-decoration: none; }
+  .footer a:hover { text-decoration: underline; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-icon">🛡️</div>
+  <div>
+    <h1>ScamShield Settings</h1>
+    <p>Configure real-time link protection</p>
+  </div>
+</div>
+
+<!-- API Key -->
+<div class="section">
+  <div class="section-title">API Key</div>
+  <label for="apiKeyInput">Your ScamShield API key (from Settings → API Keys)</label>
+  <div class="api-row">
+    <input type="password" id="apiKeyInput" placeholder="ss_live_..." autocomplete="off" spellcheck="false">
+    <button class="btn btn-primary" id="saveBtn">Save</button>
+    <button class="btn btn-danger" id="clearBtn">Clear</button>
+  </div>
+  <div class="status" id="keyStatus"></div>
+  <p style="font-size:11px;color:#6e7681;margin-top:10px;">
+    Without a key, links are scanned anonymously with rate limits. Get your key at
+    <a href="https://scamshieldy.com/settings" target="_blank" style="color:#00d4ff;">scamshieldy.com/settings</a>
+  </p>
+</div>
+
+<!-- Protection settings -->
+<div class="section">
+  <div class="section-title">Protection</div>
+
+  <div class="toggle-row" style="margin-bottom:16px;">
+    <div>
+      <div class="toggle-label">Link scanning enabled</div>
+      <div class="toggle-desc">Show risk dots on all links</div>
+    </div>
+    <div class="toggle" id="toggleEnabled"></div>
+  </div>
+
+  <div class="toggle-row">
+    <div>
+      <div class="toggle-label">Block high-risk clicks</div>
+      <div class="toggle-desc">Show warning page before high/critical links</div>
+    </div>
+    <div class="toggle" id="toggleBlock"></div>
+  </div>
+</div>
+
+<!-- Stats -->
+<div class="section">
+  <div class="section-title">Session Stats</div>
+  <div class="stats-grid">
+    <div class="stat-box">
+      <div class="stat-num" id="statScanned">0</div>
+      <div class="stat-lbl">Links Scanned</div>
+    </div>
+    <div class="stat-box">
+      <div class="stat-num" id="statThreats" style="color:#f44336;">0</div>
+      <div class="stat-lbl">Threats Found</div>
+    </div>
+    <div class="stat-box">
+      <div class="stat-num" id="statBlocked" style="color:#ff9800;">0</div>
+      <div class="stat-lbl">Clicks Blocked</div>
+    </div>
+  </div>
+</div>
+
+<div class="footer">
+  ScamShield v2.0 · <a href="https://scamshieldy.com" target="_blank">scamshieldy.com</a>
+</div>
+
+<script src="options.js"></script>
+</body>
+</html>

@@ -1,0 +1,174 @@
+/* ScamShield Link Scanner — injected dot badges & hover cards */
+
+.ss-dot {
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  margin-left: 3px;
+  vertical-align: middle;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: transform 0.15s ease;
+}
+.ss-dot:hover { transform: scale(1.4); }
+.ss-dot[data-level="safe"]     { background: #00e5a0; box-shadow: 0 0 4px #00e5a040; }
+.ss-dot[data-level="low"]      { background: #8bc34a; box-shadow: 0 0 4px #8bc34a40; }
+.ss-dot[data-level="medium"]   { background: #ff9800; box-shadow: 0 0 5px #ff980050; }
+.ss-dot[data-level="high"]     { background: #f44336; box-shadow: 0 0 6px #f4433650; }
+.ss-dot[data-level="critical"] { background: #9c27b0; box-shadow: 0 0 8px #9c27b060; animation: ss-pulse 1.4s infinite; }
+.ss-dot[data-level="scanning"] { background: #888; animation: ss-spin-dot 0.8s linear infinite; }
+
+@keyframes ss-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+@keyframes ss-spin-dot {
+  from { opacity: 0.3; }
+  50%  { opacity: 1; }
+  to   { opacity: 0.3; }
+}
+
+/* Hover card */
+.ss-card {
+  position: fixed;
+  z-index: 2147483647;
+  background: #0d1117;
+  border: 1px solid #1e2d3d;
+  border-radius: 10px;
+  padding: 12px 14px;
+  min-width: 220px;
+  max-width: 300px;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.6);
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  font-size: 12px;
+  pointer-events: none;
+  opacity: 0;
+  transform: translateY(4px);
+  transition: opacity 0.15s ease, transform 0.15s ease;
+}
+.ss-card.ss-visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+.ss-card-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+.ss-card-badge {
+  padding: 2px 8px;
+  border-radius: 20px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+.ss-badge-safe     { background: #00e5a015; color: #00e5a0; border: 1px solid #00e5a030; }
+.ss-badge-low      { background: #8bc34a15; color: #8bc34a; border: 1px solid #8bc34a30; }
+.ss-badge-medium   { background: #ff980015; color: #ff9800; border: 1px solid #ff980030; }
+.ss-badge-high     { background: #f4433615; color: #f44336; border: 1px solid #f4433630; }
+.ss-badge-critical { background: #9c27b020; color: #ce93d8; border: 1px solid #9c27b040; }
+.ss-badge-scanning { background: #ffffff08; color: #888; border: 1px solid #ffffff10; }
+
+.ss-card-score {
+  font-size: 10px;
+  color: #8892a4;
+  margin-left: auto;
+}
+.ss-card-domain {
+  font-size: 11px;
+  color: #c9d1d9;
+  word-break: break-all;
+  margin-bottom: 4px;
+}
+.ss-card-category {
+  font-size: 10px;
+  color: #6e7681;
+}
+.ss-card-powered {
+  margin-top: 8px;
+  padding-top: 7px;
+  border-top: 1px solid #1e2d3d;
+  font-size: 9px;
+  color: #3c4754;
+  text-align: right;
+}
+
+/* Warning overlay — fullscreen intercept */
+.ss-warning-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 2147483647;
+  background: rgba(0,0,0,0.88);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  backdrop-filter: blur(6px);
+}
+.ss-warning-box {
+  background: #0d1117;
+  border: 1px solid #f44336;
+  border-radius: 16px;
+  padding: 32px 36px;
+  max-width: 460px;
+  width: 90%;
+  text-align: center;
+  box-shadow: 0 0 60px rgba(244,67,54,0.25);
+}
+.ss-warning-icon {
+  font-size: 48px;
+  margin-bottom: 12px;
+}
+.ss-warning-title {
+  font-size: 20px;
+  font-weight: 700;
+  color: #f44336;
+  margin-bottom: 8px;
+}
+.ss-warning-score {
+  font-size: 13px;
+  color: #8892a4;
+  margin-bottom: 12px;
+}
+.ss-warning-url {
+  font-size: 11px;
+  font-family: monospace;
+  color: #6e7681;
+  word-break: break-all;
+  background: #0a0d11;
+  padding: 8px 12px;
+  border-radius: 6px;
+  margin-bottom: 20px;
+  border: 1px solid #1e2d3d;
+}
+.ss-warning-actions {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+}
+.ss-btn-back {
+  padding: 10px 24px;
+  border-radius: 8px;
+  background: #00d4ff15;
+  border: 1px solid #00d4ff40;
+  color: #00d4ff;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.ss-btn-back:hover { background: #00d4ff25; }
+.ss-btn-proceed {
+  padding: 10px 24px;
+  border-radius: 8px;
+  background: #f4433615;
+  border: 1px solid #f4433640;
+  color: #f44336;
+  font-size: 13px;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.ss-btn-proceed:hover { background: #f4433625; }

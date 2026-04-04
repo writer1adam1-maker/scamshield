@@ -1,12 +1,33 @@
 "use client";
 
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef } from "react";
 import {
   Shield, Syringe, Globe, Loader2, AlertTriangle, CheckCircle2,
   XCircle, Activity, Zap, Fingerprint, Brain, Thermometer, Network,
   TrendingUp, ChevronDown, ChevronUp, Lock, Dna, Target, Clock,
-  ShieldCheck, RefreshCw, Info,
+  ShieldCheck, RefreshCw, Info, Phone, MessageSquare, Mail, QrCode,
 } from "lucide-react";
+import type { VaccineAnalyzeResponse } from "@/app/api/vaccine/analyze/route";
+
+// ---------------------------------------------------------------------------
+// Scan modes
+// ---------------------------------------------------------------------------
+
+type ScanMode = "website" | "phone" | "sms" | "email" | "qr";
+
+const SCAN_MODES: Array<{
+  id: ScanMode;
+  label: string;
+  icon: React.ComponentType<{ size?: number; className?: string }>;
+  placeholder: string;
+  desc: string;
+}> = [
+  { id: "website", icon: Globe,        label: "Website",  placeholder: "Enter URL (e.g. example.com)", desc: "Scan any site for malware, phishing forms, fake scripts" },
+  { id: "phone",   icon: Phone,        label: "Phone",    placeholder: "Paste phone number(s) to check (e.g. +1-800-555-0100)", desc: "Check phone numbers for premium-rate fraud and scam call centers" },
+  { id: "sms",     icon: MessageSquare, label: "SMS/Text", placeholder: "Paste the suspicious text message here…", desc: "Detect manipulation tactics in suspicious texts and DMs" },
+  { id: "email",   icon: Mail,         label: "Email",    placeholder: "Paste email body or headers here…", desc: "Analyse emails for phishing language, fake authority, and deception" },
+  { id: "qr",      icon: QrCode,       label: "QR Code",  placeholder: "Paste the URL decoded from the QR code…", desc: "Scan the URL hidden inside a QR code for malicious content" },
+];
 
 // ---------------------------------------------------------------------------
 // Types
@@ -196,9 +217,12 @@ function applyVaccine(card: BreachCard, url: string, existing: VaccineRecord[]):
 // ---------------------------------------------------------------------------
 
 export default function VaccinePage() {
+  const [mode, setMode] = useState<ScanMode>("website");
   const [url, setUrl] = useState("");
+  const [textInput, setTextInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<VaccineResponse | null>(null);
+  const [analyzeResult, setAnalyzeResult] = useState<VaccineAnalyzeResponse | null>(null);
   const [breachCards, setBreachCards] = useState<BreachCard[]>([]);
   const [vaccines, setVaccines] = useState<VaccineRecord[] | null>(null); // null = not yet loaded
   const [error, setError] = useState<string | null>(null);
@@ -211,27 +235,56 @@ export default function VaccinePage() {
   }, []);
 
   async function handleScan() {
-    const trimmed = url.trim();
-    if (!trimmed) return;
-    const scanUrl = /^https?:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`;
     setLoading(true);
     setError(null);
     setResult(null);
+    setAnalyzeResult(null);
     setBreachCards([]);
 
     try {
-      const res = await fetch("/api/vaccine/scan", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ url: scanUrl }),
-      });
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        throw new Error(data.error || `Scan failed (${res.status})`);
+      if (mode === "website" || mode === "qr") {
+        const trimmed = url.trim();
+        if (!trimmed) { setLoading(false); return; }
+        const scanUrl = /^https?:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`;
+        const res = await fetch("/api/vaccine/scan", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ url: scanUrl }),
+        });
+        if (!res.ok) {
+          const data = await res.json().catch(() => ({}));
+          throw new Error(data.error || `Scan failed (${res.status})`);
+        }
+        const data: VaccineResponse = await res.json();
+        setResult(data);
+        setBreachCards(mapResponseToBreachCards(data));
+      } else {
+        // phone / sms / email — use the analyze endpoint
+        const trimmed = textInput.trim();
+        if (!trimmed) { setLoading(false); return; }
+        const apiMode = mode; // "phone" | "sms" | "email"
+        const res = await fetch("/api/vaccine/analyze", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ mode: apiMode, input: trimmed }),
+        });
+        if (!res.ok) {
+          const data = await res.json().catch(() => ({}));
+          throw new Error(data.error || `Analysis failed (${res.status})`);
+        }
+        const data: VaccineAnalyzeResponse = await res.json();
+        setAnalyzeResult(data);
+        // Map VaccineBreachPoint → BreachCard so we can reuse the same UI
+        setBreachCards(data.breachPoints.map((bp) => ({
+          id: bp.id,
+          title: bp.title,
+          description: bp.description,
+          severity: bp.severity,
+          category: bp.category,
+          ruleType: bp.ruleType,
+          message: bp.message,
+        })));
       }
-      const data: VaccineResponse = await res.json();
-      setResult(data);
-      setBreachCards(mapResponseToBreachCards(data));
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Scan failed");
     } finally {
@@ -250,11 +303,17 @@ export default function VaccinePage() {
     handleVaccinate(card);
   }
 
-  const threatColors = result
-    ? THREAT_COLORS[result.threatLevel.toLowerCase()] || THREAT_COLORS.safe
+  const activeThreatLevel = result?.threatLevel.toLowerCase() ?? analyzeResult?.threatLevel ?? null;
+  const threatColors = activeThreatLevel
+    ? THREAT_COLORS[activeThreatLevel] || THREAT_COLORS.safe
     : null;
+  const activeThreatScore = result?.threatScore ?? analyzeResult?.threatScore ?? 0;
+  const activeUrl = result?.url ?? (analyzeResult ? `${analyzeResult.mode.toUpperCase()} scan` : "");
 
   const vaccinesReady = vaccines !== null;
+
+  const currentMode = SCAN_MODES.find((m) => m.id === mode)!;
+  const canScanNow = mode === "website" || mode === "qr" ? url.trim().length > 0 : textInput.trim().length > 0;
 
   return (
     <div className="space-y-6">
@@ -266,11 +325,11 @@ export default function VaccinePage() {
             <div className="absolute inset-0 bg-shield/20 rounded-full blur-lg" />
           </div>
           <h1 className="text-2xl font-bold text-text-primary">
-            Website <span className="text-shield">Vaccine</span>
+            <span className="text-shield">Vaccine</span> Scanner
           </h1>
         </div>
         <p className="text-text-secondary text-sm">
-          Scan any site to discover security breaches. Vaccinate each threat for 1-hour protection.
+          Scan websites, phone numbers, texts, and emails for scam threats. Vaccinate each breach for 1-hour protection.
         </p>
       </div>
 
@@ -280,30 +339,76 @@ export default function VaccinePage() {
         Vaccines are client-side protection records stored on your device. We never modify or attack external sites.
       </div>
 
+      {/* Scan Mode Tabs */}
+      <div className="flex gap-1 p-1 rounded-xl bg-abyss/80 border border-border overflow-x-auto" data-tour="vaccine-modes">
+        {SCAN_MODES.map((m) => {
+          const Icon = m.icon;
+          return (
+            <button
+              key={m.id}
+              onClick={() => { setMode(m.id); setResult(null); setAnalyzeResult(null); setBreachCards([]); setError(null); }}
+              className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium transition-all whitespace-nowrap flex-1 justify-center ${
+                mode === m.id
+                  ? "bg-shield/10 text-shield border border-shield/20"
+                  : "text-text-muted hover:text-text-secondary"
+              }`}
+            >
+              <Icon size={13} />
+              <span className="hidden xs:inline sm:inline">{m.label}</span>
+            </button>
+          );
+        })}
+      </div>
+
+      {/* Mode description */}
+      <p className="text-xs text-text-muted -mt-2">{currentMode.desc}</p>
+
       {/* Scan Input */}
-      <div className="glass-card p-5">
-        <div className="flex gap-3">
-          <div className="relative flex-1">
-            <Globe size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-text-muted" />
-            <input
-              ref={inputRef}
-              type="text"
-              value={url}
-              onChange={(e) => setUrl(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && !loading && handleScan()}
-              placeholder="Enter URL to scan (e.g. example.com)"
-              className="w-full pl-10 pr-4 py-3 rounded-xl bg-obsidian border border-border text-text-primary placeholder:text-text-muted text-sm font-mono focus:outline-none focus:border-shield/40 transition-all"
+      <div className="glass-card p-5" data-tour="vaccine-input">
+        <div className="flex flex-col sm:flex-row gap-3">
+          {(mode === "website" || mode === "qr") ? (
+            <div className="relative flex-1">
+              {mode === "website" ? (
+                <Globe size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-text-muted" />
+              ) : (
+                <QrCode size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-text-muted" />
+              )}
+              <input
+                ref={inputRef}
+                type="text"
+                value={url}
+                onChange={(e) => setUrl(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && !loading && handleScan()}
+                placeholder={currentMode.placeholder}
+                className="w-full pl-10 pr-4 py-3 rounded-xl bg-obsidian border border-border text-text-primary placeholder:text-text-muted text-sm font-mono focus:outline-none focus:border-shield/40 transition-all"
+                disabled={loading}
+              />
+            </div>
+          ) : (
+            <textarea
+              value={textInput}
+              onChange={(e) => setTextInput(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && e.ctrlKey && !loading && handleScan()}
+              placeholder={currentMode.placeholder}
+              rows={4}
+              className="flex-1 px-4 py-3 rounded-xl bg-obsidian border border-border text-text-primary placeholder:text-text-muted text-sm font-mono focus:outline-none focus:border-shield/40 transition-all resize-y min-h-[80px]"
               disabled={loading}
             />
-          </div>
+          )}
           <button
             onClick={handleScan}
-            disabled={loading || !url.trim()}
-            className="px-5 py-3 rounded-xl bg-shield/15 border border-shield/25 text-shield font-semibold text-sm hover:bg-shield/20 disabled:opacity-40 disabled:cursor-not-allowed transition-all flex items-center gap-2 shrink-0"
+            disabled={loading || !canScanNow}
+            data-tour="vaccine-scan-button"
+            className="w-full sm:w-auto px-5 py-3 rounded-xl bg-shield/15 border border-shield/25 text-shield font-semibold text-sm hover:bg-shield/20 disabled:opacity-40 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-2 shrink-0 sm:self-start"
           >
-            {loading ? <><Loader2 size={15} className="animate-spin" />Scanning…</> : <><Syringe size={15} />Scan Site</>}
+            {loading
+              ? <><Loader2 size={15} className="animate-spin" />Scanning…</>
+              : <><Syringe size={15} />Scan</>}
           </button>
         </div>
+        {(mode === "sms" || mode === "email" || mode === "phone") && (
+          <p className="text-[10px] text-text-muted mt-2">Press Ctrl+Enter to scan</p>
+        )}
       </div>
 
       {/* Error */}
@@ -325,7 +430,7 @@ export default function VaccinePage() {
             <p className="text-text-primary font-medium">SYNERGOS Engine Active</p>
             <p className="text-text-muted text-sm mt-1">Running 5-stage behavioral analysis…</p>
           </div>
-          <div className="flex gap-6 mt-1">
+          <div className="flex flex-wrap justify-center gap-4 mt-1">
             {["Graph Build", "Intent Field", "Game Theory", "Lyapunov", "Integration"].map((stage, i) => (
               <div key={stage} className="flex flex-col items-center gap-1">
                 <div className={`w-2 h-2 rounded-full ${i < 3 ? "bg-shield animate-pulse" : "bg-slate-mid"}`} />
@@ -337,44 +442,45 @@ export default function VaccinePage() {
       )}
 
       {/* Results */}
-      {result && !loading && (
+      {(result || analyzeResult) && !loading && (
         <div className="space-y-4">
 
           {/* Summary Banner */}
           <div className={`glass-card p-5 ${threatColors?.border} ${threatColors?.glow}`}>
-            <div className="flex items-center gap-5">
+            <div className="flex items-center gap-4 flex-wrap">
               {/* Score Ring */}
-              <div className="relative w-16 h-16 shrink-0">
+              <div className="relative w-14 h-14 shrink-0">
                 <svg viewBox="0 0 100 100" className="w-full h-full -rotate-90">
                   <circle cx="50" cy="50" r="42" fill="none" stroke="currentColor" strokeWidth="7" className="text-slate-deep" />
                   <circle
                     cx="50" cy="50" r="42" fill="none" strokeWidth="7"
                     strokeDasharray={`${2 * Math.PI * 42}`}
-                    strokeDashoffset={`${2 * Math.PI * 42 * (1 - result.threatScore / 100)}`}
+                    strokeDashoffset={`${2 * Math.PI * 42 * (1 - activeThreatScore / 100)}`}
                     strokeLinecap="round"
                     className={threatColors?.text || "text-safe"}
                   />
                 </svg>
                 <div className="absolute inset-0 flex items-center justify-center">
-                  <span className={`text-base font-bold font-mono ${threatColors?.text}`}>{Math.round(result.threatScore)}</span>
+                  <span className={`text-sm font-bold font-mono ${threatColors?.text}`}>{Math.round(activeThreatScore)}</span>
                 </div>
               </div>
 
               <div className="flex-1 min-w-0">
                 <div className={`text-xs font-mono uppercase tracking-widest ${threatColors?.text} mb-0.5`}>
-                  {result.threatLevel} threat
+                  {activeThreatLevel} threat
                 </div>
-                <div className="text-text-primary font-semibold">
+                <div className="text-text-primary font-semibold text-sm">
                   {breachCards.length === 0
-                    ? "No breach points found"
+                    ? analyzeResult?.summary ?? "No breach points found"
                     : `${breachCards.length} breach point${breachCards.length !== 1 ? "s" : ""} detected`}
                 </div>
-                <div className="text-text-muted text-xs font-mono mt-0.5 truncate">{result.url}</div>
+                <div className="text-text-muted text-xs font-mono mt-0.5 truncate">{activeUrl}</div>
               </div>
 
-              <div className="flex gap-4 shrink-0">
-                <QuickStat icon={Clock} label="Latency" value={`${result.latencyMs}ms`} />
-                <QuickStat icon={Lock} label="Signed" value="HMAC" />
+              <div className="flex gap-3 shrink-0">
+                {result && <QuickStat icon={Clock} label="Latency" value={`${result.latencyMs}ms`} />}
+                {result && <QuickStat icon={Lock} label="Signed" value="HMAC" />}
+                {analyzeResult && <QuickStat icon={Clock} label="Time" value={`${analyzeResult.processingTimeMs}ms`} />}
               </div>
             </div>
           </div>
@@ -387,7 +493,7 @@ export default function VaccinePage() {
               <p className="text-text-muted text-sm mt-1">This site passed all security checks.</p>
             </div>
           ) : (
-            <div className="space-y-3">
+            <div className="space-y-3" data-tour="breach-cards">
               <div className="flex items-center justify-between">
                 <h2 className="text-sm font-semibold text-text-primary">Breach Points</h2>
                 {vaccinesReady && (
@@ -415,8 +521,8 @@ export default function VaccinePage() {
             </div>
           )}
 
-          {/* SYNERGOS — collapsed by default */}
-          {result.synergosAnalysis && (
+          {/* SYNERGOS — collapsed by default (website scans only) */}
+          {result?.synergosAnalysis && (
             <div className="glass-card overflow-hidden">
               <button
                 onClick={() => setShowSynergos((v) => !v)}
@@ -434,7 +540,7 @@ export default function VaccinePage() {
                 {showSynergos ? <ChevronUp size={15} className="text-text-muted" /> : <ChevronDown size={15} className="text-text-muted" />}
               </button>
 
-              {showSynergos && (
+              {showSynergos && result?.synergosAnalysis && (
                 <div className="px-5 pb-5 space-y-4">
                   {/* Defense list */}
                   {result.synergosAnalysis.recommendedDefense.length > 0 && (
@@ -494,29 +600,47 @@ export default function VaccinePage() {
           <div className="flex items-center gap-1.5 px-1 text-text-muted">
             <Lock size={10} />
             <span className="text-[10px] font-mono">
-              HMAC-SHA256 signed · {new Date(result.signedAt).toLocaleTimeString()} · payload verified
+              {result
+                ? `HMAC-SHA256 signed · ${new Date(result.signedAt).toLocaleTimeString()} · payload verified`
+                : `${currentMode.label} scan · ${new Date().toLocaleTimeString()} · local analysis`}
             </span>
           </div>
         </div>
       )}
 
       {/* Empty state */}
-      {!result && !loading && !error && (
-        <div className="glass-card p-10 text-center">
+      {!result && !analyzeResult && !loading && !error && (
+        <div className="glass-card p-8 text-center">
           <Syringe size={40} className="text-slate-mid mx-auto mb-4" />
-          <h3 className="text-text-secondary font-medium mb-2">Enter a URL to detect breach points</h3>
-          <p className="text-text-muted text-sm max-w-md mx-auto mb-6">
-            We scan the site for phishing forms, malware scripts, fake badges, social engineering, and more.
-            Each threat gets its own vaccine — active for 1 hour.
-          </p>
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-3 max-w-xl mx-auto">
-            {[
+          <h3 className="text-text-secondary font-medium mb-2">
+            {currentMode.id === "website" && "Enter a URL to scan for breach points"}
+            {currentMode.id === "qr"      && "Paste the URL from your QR code to scan"}
+            {currentMode.id === "phone"   && "Paste a phone number to check for fraud risk"}
+            {currentMode.id === "sms"     && "Paste a suspicious text message to analyze"}
+            {currentMode.id === "email"   && "Paste an email body or headers to analyze"}
+          </h3>
+          <p className="text-text-muted text-sm max-w-md mx-auto mb-6">{currentMode.desc}</p>
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 max-w-xl mx-auto">
+            {(currentMode.id === "website" || currentMode.id === "qr") ? [
               { icon: Network,     label: "Graph Physics",     desc: "Field dependency diffusion" },
               { icon: Target,      label: "Anomaly Detection", desc: "Payoff-based detection" },
               { icon: Activity,    label: "Chaos Analysis",    desc: "Lyapunov sensitivity" },
               { icon: Fingerprint, label: "Spectral IDs",      desc: "Eigenvalue signatures" },
               { icon: Thermometer, label: "Thermodynamics",    desc: "Free energy F = U − TS" },
               { icon: Dna,         label: "Immune Memory",     desc: "Variant matching" },
+            ].map(({ icon: Icon, label, desc }) => (
+              <div key={label} className="p-3 rounded-xl bg-obsidian/50 border border-border/50 text-left">
+                <Icon size={14} className="text-shield mb-1.5" />
+                <div className="text-text-secondary text-xs font-medium">{label}</div>
+                <div className="text-text-muted text-[10px]">{desc}</div>
+              </div>
+            )) : [
+              { icon: Brain,        label: "Deception Tactics",   desc: "Manipulation pattern matching" },
+              { icon: AlertTriangle,label: "Authority Faking",    desc: "Fake official language detection" },
+              { icon: Zap,          label: "Urgency Signals",     desc: "False time-pressure detection" },
+              { icon: Phone,        label: "Phone Risk Scoring",  desc: "Premium-rate & scam area codes" },
+              { icon: Activity,     label: "Emotional Exploit",   desc: "Fear, greed, empathy targeting" },
+              { icon: Lock,         label: "Isolation Tactics",   desc: "Secrecy demand detection" },
             ].map(({ icon: Icon, label, desc }) => (
               <div key={label} className="p-3 rounded-xl bg-obsidian/50 border border-border/50 text-left">
                 <Icon size={14} className="text-shield mb-1.5" />
@@ -682,5 +806,3 @@ function QuickStat({ icon: Icon, label, value }: { icon: React.ComponentType<{ s
   );
 }
 
-// Suppress unused import warnings
-void Zap;

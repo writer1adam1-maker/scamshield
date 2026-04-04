@@ -1,14 +1,16 @@
 {
   "manifest_version": 3,
   "name": "ScamShield",
-  "version": "1.1.0",
-  "description": "Real-time website threat scanning with protective vaccine injection.",
+  "version": "2.0.0",
+  "description": "Real-time link scanning — every link gets a live threat score before you click.",
   "permissions": [
     "activeTab",
     "scripting",
-    "storage"
+    "storage",
+    "contextMenus"
   ],
   "host_permissions": [
+    "https://scamshieldy.com/*",
     "https://scamshield-green.vercel.app/*"
   ],
   "background": {
@@ -21,14 +23,25 @@
         "https://*/*"
       ],
       "js": [
-        "content-script.js"
+        "content-script.js",
+        "link-scanner.js"
       ],
-      "run_at": "document_start"
+      "css": [
+        "link-scanner.css"
+      ],
+      "run_at": "document_idle"
     }
   ],
+  "web_accessible_resources": [
+    {
+      "resources": ["warning.html"],
+      "matches": ["<all_urls>"]
+    }
+  ],
+  "options_page": "options.html",
   "action": {
     "default_popup": "popup.html",
-    "default_title": "ScamShield — Scan for threats",
+    "default_title": "ScamShield — Real-time link protection",
     "default_icon": {
       "16": "icons/icon16.png",
       "48": "icons/icon48.png",

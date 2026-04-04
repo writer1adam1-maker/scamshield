@@ -191,7 +191,7 @@ export default function PricingPage() {
         body: JSON.stringify({ plan: planId, annual }),
       });
       const data = await res.json();
-      if (data.url) {
+      if (data.url && typeof data.url === "string" && data.url.startsWith("https://checkout.stripe.com/")) {
         window.location.href = data.url;
       } else if (res.status === 401) {
         router.push("/login?next=/pricing");

@@ -10,8 +10,15 @@
  * a signature it can verify via a lightweight challenge-response.
  */
 
-const SIGNING_SECRET = process.env.VACCINE_SIGNING_SECRET || 'scamshield-dev-secret-change-in-prod';
 const SIGNATURE_TTL_MS = 60 * 60 * 1000; // 1 hour max age for signed payloads
+
+function getSigningSecret(): string {
+  const secret = process.env.VACCINE_SIGNING_SECRET;
+  if (!secret || secret.length < 32) {
+    throw new Error('VACCINE_SIGNING_SECRET env var must be set (min 32 chars). Do not use a default value.');
+  }
+  return secret;
+}
 
 /**
  * Sign an injection payload with HMAC-SHA256.
@@ -26,7 +33,7 @@ export async function signPayload(payload: string): Promise<{
   const message = `${timestamp}:${payload}`;
 
   const encoder = new TextEncoder();
-  const keyData = encoder.encode(SIGNING_SECRET);
+  const keyData = encoder.encode(getSigningSecret());
   const msgData = encoder.encode(message);
 
   const key = await crypto.subtle.importKey(
@@ -59,7 +66,7 @@ export async function verifyPayload(
 
   const message = `${timestamp}:${payload}`;
   const encoder = new TextEncoder();
-  const keyData = encoder.encode(SIGNING_SECRET);
+  const keyData = encoder.encode(getSigningSecret());
   const msgData = encoder.encode(message);
 
   const key = await crypto.subtle.importKey(

@@ -7,85 +7,10 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { runVERIDICT } from "@/lib/algorithms/veridict-engine";
-import { createServiceRoleClient } from "@/lib/supabase/client";
-import { checkApiKeyRateLimit } from "@/lib/api-key-rate-limit";
+import { requireApiKey } from "@/lib/api-key-auth";
 import type { AnalysisInput } from "@/lib/algorithms/types";
 
 const API_VERSION = "1.0";
-
-// ---------------------------------------------------------------------------
-// API key validation
-// In production: look up key in Supabase api_keys table, check rate limit,
-// return the associated plan tier. Currently validates format only.
-// ---------------------------------------------------------------------------
-
-interface ApiKeyInfo {
-  keyId: string;
-  plan: "free" | "pro";
-  valid: boolean;
-  reason?: string;
-  revokedAt?: string | null;
-}
-
-async function validateApiKey(key: string): Promise<ApiKeyInfo> {
-  // Format validation
-  if (!key || typeof key !== "string") {
-    return { keyId: "", plan: "free", valid: false, reason: "Missing API key" };
-  }
-  if (!key.startsWith("ss_live_") && !key.startsWith("ss_test_")) {
-    return { keyId: "", plan: "free", valid: false, reason: "Invalid API key format. Expected ss_live_... or ss_test_..." };
-  }
-  if (key.length < 24) {
-    return { keyId: "", plan: "free", valid: false, reason: "API key too short" };
-  }
-
-  try {
-    const db = createServiceRoleClient();
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data } = await (db as any)
-      .from("api_keys")
-      .select("key_prefix, key_hash, plan, revoked_at")
-      .eq("key_prefix", key.substring(0, 16))
-      .single();
-
-    if (!data) {
-      return { keyId: key.substring(0, 16) + "...", plan: "free", valid: false, reason: "API key not found" };
-    }
-
-    if (data.revoked_at) {
-      return {
-        keyId: key.substring(0, 16) + "...",
-        plan: "free",
-        valid: false,
-        reason: "API key has been revoked",
-        revokedAt: data.revoked_at,
-      };
-    }
-
-    // In production, verify key_hash using bcrypt.compare()
-    // For now, just verify prefix match (real security requires bcrypt)
-    return {
-      keyId: key.substring(0, 16) + "...",
-      plan: (data.plan as "free" | "pro") || "free",
-      valid: true,
-    };
-  } catch {
-    // Graceful fallback if api_keys table doesn't exist yet
-    console.warn("[API v1] api_keys table lookup failed, rejecting key");
-    return {
-      keyId: key.substring(0, 16) + "...",
-      plan: "free",
-      valid: false,
-      reason: "API key validation unavailable",
-    };
-  }
-}
-
-function extractApiKey(req: NextRequest): string | null {
-  const auth = req.headers.get("authorization");
-  if (auth?.startsWith("Bearer ")) return auth.slice(7);
-  return req.headers.get("x-api-key");
-}
 
 function buildAnalysisInput(type: string, content: string): AnalysisInput {
   if (type === "url") return { url: content, text: content };
@@ -102,52 +27,27 @@ function buildAnalysisInput(type: string, content: string): AnalysisInput {
 // Handler
 // ---------------------------------------------------------------------------
 
+// CORS headers for browser extension and third-party API consumers
+const CORS_HEADERS = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
+  "Access-Control-Allow-Headers": "Authorization, X-API-Key, Content-Type",
+};
+
+// OPTIONS preflight — required for browser extension CORS requests
+export async function OPTIONS() {
+  return new Response(null, { status: 204, headers: CORS_HEADERS });
+}
+
 export async function POST(req: NextRequest) {
   const startTime = performance.now();
 
-  // --- Auth ---
-  const rawKey = extractApiKey(req);
-  if (!rawKey) {
-    return NextResponse.json(
-      {
-        error: "API key required",
-        docs: "Include your key as: Authorization: Bearer ss_live_YOUR_KEY or X-API-Key: ss_live_YOUR_KEY",
-        getKey: "/settings",
-      },
-      { status: 401 }
-    );
+  // --- Auth + rate limit (tracks usage automatically) ---
+  const auth = await requireApiKey(req);
+  if (auth.error) {
+    return NextResponse.json(auth.body, { status: auth.status, headers: auth.headers });
   }
-
-  const keyInfo = await validateApiKey(rawKey);
-  if (!keyInfo.valid) {
-    return NextResponse.json(
-      { error: keyInfo.reason ?? "Invalid API key" },
-      { status: 401 }
-    );
-  }
-
-  // --- Rate limiting ---
-  const rateLimit = checkApiKeyRateLimit(keyInfo.keyId, keyInfo.plan);
-  if (!rateLimit.allowed) {
-    return NextResponse.json(
-      {
-        error: "API rate limit exceeded",
-        plan: keyInfo.plan,
-        limit: rateLimit.limit,
-        remaining: 0,
-        resetAt: new Date(rateLimit.resetAt).toISOString(),
-      },
-      {
-        status: 429,
-        headers: {
-          "X-RateLimit-Limit": String(rateLimit.limit),
-          "X-RateLimit-Remaining": "0",
-          "X-RateLimit-Reset": String(rateLimit.resetAt),
-          "Retry-After": String(Math.ceil((rateLimit.resetAt - Date.now()) / 1000)),
-        },
-      }
-    );
-  }
+  const { keyInfo, rateLimit } = auth;
 
   // --- Parse body ---
   const body = await req.json().catch(() => null);
@@ -246,6 +146,7 @@ export async function POST(req: NextRequest) {
   return NextResponse.json(response, {
     status: 200,
     headers: {
+      ...CORS_HEADERS,
       "X-RateLimit-Plan": keyInfo.plan,
       "X-RateLimit-Limit": String(rateLimit.limit),
       "X-RateLimit-Remaining": String(rateLimit.remaining),

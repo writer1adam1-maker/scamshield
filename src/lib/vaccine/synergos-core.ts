@@ -308,8 +308,8 @@ export class SynergosEngine {
 
   constructor(options?: { serverSecret?: string; debug?: boolean; onDriftDetected?: (stats: { mean: number; variance: number; count: number }) => void }) {
     this.energyRingBuffer = new Float64Array(this.windowSize);
-    // H-1: Server secret — MUST be set via env or constructor for production
-    this.serverSecret = options?.serverSecret || process.env.SYNERGOS_SECRET || 'default-dev-secret-change-in-prod';
+    // H-1: Server secret — resolved at construction or deferred to analyze() if env not yet available (build time)
+    this.serverSecret = options?.serverSecret || process.env.SYNERGOS_SECRET || '';
     if (options?.debug !== undefined) (this as any).DEBUG = options.debug;
     if (options?.onDriftDetected) this.onDriftDetected = options.onDriftDetected;
   }
@@ -319,6 +319,13 @@ export class SynergosEngine {
   // ========================================================================
 
   async analyze(form: ScrapedForm, html: string, metadata?: any): Promise<SynergosDecision> {
+    // H-1: Enforce secret at runtime (deferred from constructor to allow module load during build)
+    const runtimeSecret = this.serverSecret || process.env.SYNERGOS_SECRET || '';
+    if (!runtimeSecret || runtimeSecret.length < 16) {
+      throw new Error('SYNERGOS_SECRET env var must be set (min 16 chars). No default allowed in production.');
+    }
+    this.serverSecret = runtimeSecret;
+
     const startTime = performance.now();
 
     try {

@@ -2,6 +2,9 @@ import type { Metadata } from "next";
 import { Inter, JetBrains_Mono } from "next/font/google";
 import { Sidebar } from "@/components/layout/sidebar";
 import { InstallPrompt } from "@/components/pwa/install-prompt";
+import { TourProvider } from "@/components/onboarding/tour-provider";
+import { TourTooltip } from "@/components/onboarding/tour-tooltip";
+import { TourTrigger } from "@/components/onboarding/tour-trigger";
 import "./globals.css";
 
 const inter = Inter({
@@ -48,13 +51,17 @@ export default function RootLayout({
           <div className="absolute top-1/4 left-1/2 -translate-x-1/2 w-[800px] h-[800px] rounded-full bg-shield/[0.03] blur-[120px]" />
         </div>
 
-        <div className="relative flex min-h-screen">
-          <Sidebar />
-          <main className="flex-1 ml-0 md:ml-64 min-h-screen">
-            <div className="p-4 md:p-8 max-w-6xl mx-auto">{children}</div>
-          </main>
-        </div>
-        <InstallPrompt />
+        <TourProvider>
+          <div className="relative flex min-h-screen">
+            <Sidebar />
+            <main className="flex-1 ml-0 md:ml-64 min-h-screen">
+              <div className="pt-16 px-4 pb-4 md:pt-8 md:px-8 md:pb-8 max-w-6xl mx-auto">{children}</div>
+            </main>
+          </div>
+          <InstallPrompt />
+          <TourTooltip />
+          <TourTrigger />
+        </TourProvider>
       </body>
     </html>
   );

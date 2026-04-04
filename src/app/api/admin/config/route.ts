@@ -17,8 +17,9 @@ async function requireAdmin(req: NextRequest): Promise<boolean> {
     );
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return false;
-    const adminEmails = (process.env.ADMIN_EMAILS || "").split(",").map((e) => e.trim().toLowerCase());
-    return adminEmails.includes((user.email || "").toLowerCase());
+    const adminEmails = (process.env.ADMIN_EMAILS || "").split(",").map((e) => e.trim().toLowerCase()).filter(Boolean);
+    const userEmail = (user.email || "").toLowerCase();
+    return adminEmails.length > 0 && userEmail.length > 0 && adminEmails.includes(userEmail);
   } catch { return false; }
 }
 

@@ -77,7 +77,7 @@ export function ScanInput({ onScan, isLoading = false, progress = 0 }: ScanInput
   return (
     <div className="w-full">
       {/* Tab selector */}
-      <div className="flex gap-1 mb-4 p-1 rounded-xl bg-abyss/80 border border-border w-fit">
+      <div className="flex gap-1 mb-4 p-1 rounded-xl bg-abyss/80 border border-border w-full sm:w-fit overflow-x-auto" data-tour="scan-tabs">
         {tabs.map((tab) => {
           const Icon = tab.icon;
           return (
@@ -85,7 +85,7 @@ export function ScanInput({ onScan, isLoading = false, progress = 0 }: ScanInput
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
               className={clsx(
-                "flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200",
+                "flex items-center gap-2 px-3 sm:px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 whitespace-nowrap flex-1 sm:flex-none justify-center",
                 activeTab === tab.id
                   ? "bg-shield/10 text-shield border border-shield/20"
                   : "text-text-muted hover:text-text-secondary"
@@ -198,10 +198,10 @@ export function ScanInput({ onScan, isLoading = false, progress = 0 }: ScanInput
           )}
 
           {/* Bottom action bar */}
-          <div className="flex items-center justify-between p-4 border-t border-border/50">
+          <div className="flex items-center justify-between p-4 border-t border-border/50 gap-3">
             {/* Progress indicator when loading */}
             {isLoading ? (
-              <div className="flex items-center gap-3 flex-1 mr-4">
+              <div className="flex items-center gap-3 flex-1 min-w-0">
                 <div className="flex-1 h-1.5 rounded-full bg-slate-deep overflow-hidden">
                   <div
                     className="h-full rounded-full bg-shield transition-all duration-500 ease-out"
@@ -213,9 +213,10 @@ export function ScanInput({ onScan, isLoading = false, progress = 0 }: ScanInput
                 </span>
               </div>
             ) : (
-              <div className="flex items-center gap-2 text-xs text-text-muted">
-                <ScanLine size={12} />
-                <span className="font-mono">VERIDICT multi-layer analysis</span>
+              <div className="flex items-center gap-2 text-xs text-text-muted min-w-0 overflow-hidden">
+                <ScanLine size={12} className="shrink-0" />
+                <span className="font-mono hidden sm:inline">VERIDICT multi-layer analysis</span>
+                <span className="font-mono sm:hidden">VERIDICT</span>
               </div>
             )}
 
@@ -223,6 +224,7 @@ export function ScanInput({ onScan, isLoading = false, progress = 0 }: ScanInput
             <button
               onClick={handleSubmit}
               disabled={isLoading || !canSubmit}
+              data-tour="analyze-button"
               className={clsx(
                 "relative flex items-center gap-2 px-6 py-2.5 rounded-xl font-semibold text-sm transition-all duration-200",
                 "disabled:opacity-30 disabled:cursor-not-allowed",

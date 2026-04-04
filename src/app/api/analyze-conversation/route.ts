@@ -8,10 +8,10 @@ import { checkRateLimit } from "@/lib/rate-limit";
 import { getClientIp } from "@/lib/utils";
 import { getUserFromRequest, canScan, incrementScanCount } from "@/lib/auth-helpers";
 
-/** 1 scan per 1,000 words, minimum 1, capped at 10 */
+/** Rounded per 1,000 words (1,500 words = 2 scans), minimum 1, capped at 10 */
 function scansForText(text: string): number {
   const words = text.trim().split(/\s+/).filter(Boolean).length;
-  return Math.min(10, Math.max(1, Math.floor(words / 1000)));
+  return Math.min(10, Math.max(1, Math.round(words / 1000)));
 }
 
 export async function POST(req: NextRequest) {

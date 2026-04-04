@@ -23,7 +23,7 @@ const nextConfig: NextConfig = {
               "style-src 'self' 'unsafe-inline'",
               "img-src 'self' data: blob:",
               "font-src 'self'",
-              "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api.stripe.com",
+              "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api.stripe.com https://accounts.google.com https://www.googleapis.com https://oauth2.googleapis.com",
               "frame-src 'none'",
               "object-src 'none'",
               "base-uri 'self'",

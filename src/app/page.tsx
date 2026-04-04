@@ -122,7 +122,7 @@ export default function HomePage() {
         </p>
 
         {/* Scan Input */}
-        <div className="max-w-3xl mx-auto">
+        <div className="max-w-3xl mx-auto" data-tour="scan-input">
           <ScanInput
             onScan={handleScan}
             isLoading={scanning}

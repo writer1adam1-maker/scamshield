@@ -109,9 +109,10 @@ function scorePhone(raw: string, fullText: string): PhoneMatch {
     PREMIUM_RATE_PREFIXES.has(normalized.substring(0, 6));
   if (isPremiumRate) { scamScore += 0.35; flags.push('Premium-rate number'); }
 
-  // Toll-free check
+  // Toll-free check — toll-free alone is NOT suspicious (legit businesses use them)
+  // Only informational; score boost removed to avoid flagging customer service numbers
   const isTollFree = TOLL_FREE_PREFIXES.has(areaCode);
-  if (isTollFree) { scamScore += 0.10; flags.push('Toll-free — common in scam call centers'); }
+  if (isTollFree) { flags.push('Toll-free number'); }
 
   // High-scam area code
   const isSuspiciousAreaCode = HIGH_SCAM_AREA_CODES.has(areaCode);

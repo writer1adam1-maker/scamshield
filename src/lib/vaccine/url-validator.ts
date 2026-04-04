@@ -24,6 +24,11 @@ const BLOCKED_IP_RANGES = [
   /^fe80:/i,                         // Link-local
   /^fc00:/i,                         // Unique local
   /^fd/i,                            // Unique local
+  /^::ffff:169\.254\./i,             // IPv6-mapped link-local (AWS metadata via IPv6)
+  /^::ffff:127\./i,                  // IPv6-mapped loopback
+  /^::ffff:10\./i,                   // IPv6-mapped Class A private
+  /^::ffff:172\.(1[6-9]|2[0-9]|3[01])\./i, // IPv6-mapped Class B private
+  /^::ffff:192\.168\./i,             // IPv6-mapped Class C private
 ];
 
 const BLOCKED_HOSTNAMES = [

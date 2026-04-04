@@ -19,6 +19,8 @@ import {
   MessageSquare,
   Syringe,
   ShieldAlert,
+  Puzzle,
+  Mail,
 } from "lucide-react";
 import clsx from "clsx";
 import { createBrowserClient } from "@/lib/supabase/client";
@@ -31,6 +33,8 @@ const navItems = [
   { href: "/history", label: "History", icon: History },
   { href: "/conversation", label: "Conv. Arc", icon: MessageSquare },
   { href: "/patterns", label: "Patterns", icon: Database },
+  { href: "/dashboard/gmail", label: "Gmail Shield", icon: Mail },
+  { href: "/extension", label: "Extension", icon: Puzzle },
   { href: "/settings", label: "Settings", icon: Settings },
 ];
 

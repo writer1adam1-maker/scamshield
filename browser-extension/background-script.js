@@ -1,48 +1,85 @@
 /**
- * ScamShield Browser Extension - Background Script
- * Manages vaccination cache and communicates with API
+ * ScamShield Browser Extension - Background Script v2.0
+ * Manages vaccination cache, context menus, and API communication.
  *
  * Security hardening:
  * - Pinned API domain (no dynamic URL construction)
  * - Response validation before caching
  * - No innerHTML with untrusted data (textContent only)
  * - Cache entries include content hash for integrity
- * - Encrypted storage via session-derived key (stub for production)
  * - Mutex on concurrent requests for same URL
  */
 
-const API_DOMAIN = 'scamshield-green.vercel.app';
+const API_DOMAIN = 'scamshieldy.com';
 const API_BASE = 'https://' + API_DOMAIN;
 const VACCINE_CACHE = new Map();
 const VACCINE_TTL = 24 * 60 * 60 * 1000; // 24 hours
 const PENDING_REQUESTS = new Map(); // Mutex: prevent concurrent requests for same URL
 
-/**
- * Handle extension icon click — request scan via popup, not injection
- */
+// ── Context menu setup ────────────────────────────────────────────────────
+chrome.runtime.onInstalled.addListener(function () {
+  chrome.contextMenus.create({
+    id: 'ss-scan-link',
+    title: 'Scan with ScamShield',
+    contexts: ['link'],
+  });
+  chrome.contextMenus.create({
+    id: 'ss-scan-selection',
+    title: 'Scan selected text with ScamShield',
+    contexts: ['selection'],
+  });
+  chrome.contextMenus.create({
+    id: 'ss-scan-page',
+    title: 'Scan this page with ScamShield',
+    contexts: ['page'],
+  });
+});
+
+chrome.contextMenus.onClicked.addListener(function (info, tab) {
+  if (info.menuItemId === 'ss-scan-link' && info.linkUrl) {
+    openPopupScan(tab, info.linkUrl);
+  } else if (info.menuItemId === 'ss-scan-selection' && info.selectionText) {
+    openPopupScan(tab, info.selectionText);
+  } else if (info.menuItemId === 'ss-scan-page' && tab && tab.url) {
+    openPopupScan(tab, tab.url);
+  }
+});
+
+function openPopupScan(tab, content) {
+  // Store the pending scan content for the popup to pick up
+  chrome.storage.session.set({ ss_popup_prescan: content });
+  // Open popup by injecting the panel into the current page
+  if (tab && tab.id && tab.url && (tab.url.startsWith('http://') || tab.url.startsWith('https://'))) {
+    chrome.scripting.executeScript({
+      target: { tabId: tab.id },
+      function: openVaccinePanel,
+      args: [content, API_BASE]
+    }).catch(function () {});
+  }
+}
+
+// ── Extension icon click — open vaccine panel ─────────────────────────────
 chrome.action.onClicked.addListener((tab) => {
   if (tab.url && (tab.url.startsWith('http://') || tab.url.startsWith('https://'))) {
     chrome.scripting.executeScript({
       target: { tabId: tab.id },
       function: openVaccinePanel,
       args: [tab.url, API_BASE]
-    });
+    }).catch(function () {});
   }
 });
 
 function openVaccinePanel(url, apiBase) {
-  // Remove existing panel if present
   var existing = document.getElementById('scamshield-vaccine-panel');
   if (existing) { existing.remove(); return; }
 
   var panel = document.createElement('div');
   panel.id = 'scamshield-vaccine-panel';
-  panel.style.cssText = 'position:fixed;top:50px;right:20px;width:400px;max-height:600px;background:white;border:2px solid #0066cc;border-radius:8px;box-shadow:0 4px 20px rgba(0,0,0,0.15);z-index:999999;font-family:Arial,sans-serif;overflow-y:auto;';
+  panel.style.cssText = 'position:fixed;top:50px;right:20px;width:400px;max-height:600px;background:#0d1117;border:1px solid #1e2d3d;border-radius:12px;box-shadow:0 8px 40px rgba(0,0,0,0.7);z-index:999999;font-family:-apple-system,BlinkMacSystemFont,sans-serif;overflow-y:auto;';
 
-  // Loading state
   var loading = document.createElement('div');
-  loading.style.cssText = 'padding:20px;text-align:center;color:#666;';
-  loading.textContent = 'Scanning...';
+  loading.style.cssText = 'padding:20px;text-align:center;color:#8892a4;font-size:13px;';
+  loading.textContent = 'ScamShield scanning…';
   panel.appendChild(loading);
   document.body.appendChild(panel);
 
@@ -53,114 +90,103 @@ function openVaccinePanel(url, apiBase) {
   })
     .then(function (r) { return r.json(); })
     .then(function (vaccine) {
-      // Validate response shape
       if (!vaccine || typeof vaccine !== 'object' || !vaccine.threatLevel) {
-        panel.textContent = 'Error: Invalid response from server';
+        loading.textContent = 'Error: Invalid response from server';
         return;
       }
       renderVaccinePanel(panel, vaccine);
     })
     .catch(function (err) {
-      panel.textContent = 'Error: ' + (err.message || 'Unknown error');
+      loading.textContent = 'Error: ' + (err.message || 'Network error');
     });
 }
 
-/**
- * Render vaccine panel using textContent only (no innerHTML with untrusted data).
- */
 function renderVaccinePanel(panel, vaccine) {
-  // Clear panel
   while (panel.firstChild) panel.removeChild(panel.firstChild);
 
   var COLORS = {
-    safe: '#4caf50', low: '#8bc34a', medium: '#ff9800',
+    safe: '#00e5a0', low: '#8bc34a', medium: '#ff9800',
     high: '#f44336', critical: '#9c27b0'
   };
-  var color = COLORS[vaccine.threatLevel] || '#999';
+  var color = COLORS[vaccine.threatLevel] || '#8892a4';
 
-  // Header row
   var header = document.createElement('div');
-  header.style.cssText = 'padding:16px;display:flex;justify-content:space-between;align-items:center;';
-  var title = document.createElement('h3');
-  title.style.cssText = 'margin:0;color:#333;';
-  title.textContent = 'ScamShield Vaccine';
+  header.style.cssText = 'padding:14px 16px;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid #1e2d3d;';
+  var title = document.createElement('span');
+  title.style.cssText = 'font-size:14px;font-weight:700;color:#e6edf3;';
+  title.textContent = 'ScamShield';
   header.appendChild(title);
   var closeBtn = document.createElement('button');
-  closeBtn.textContent = '\u00d7';
-  closeBtn.style.cssText = 'background:none;border:none;font-size:20px;cursor:pointer;';
+  closeBtn.textContent = '✕';
+  closeBtn.style.cssText = 'background:none;border:none;font-size:16px;cursor:pointer;color:#6e7681;padding:0;';
   closeBtn.addEventListener('click', function () { panel.remove(); });
   header.appendChild(closeBtn);
   panel.appendChild(header);
 
-  // Threat level badge
   var badge = document.createElement('div');
-  badge.style.cssText = 'background:' + color + ';color:white;padding:12px;margin:0 16px 12px;border-radius:4px;font-weight:bold;text-align:center;';
-  badge.textContent = (vaccine.threatLevel || 'unknown').toUpperCase() + ' - Score: ' + (vaccine.threatScore || 0) + '/100';
+  badge.style.cssText = 'background:' + color + '18;border:1px solid ' + color + '40;color:' + color + ';padding:10px 16px;margin:12px 16px;border-radius:8px;font-weight:700;font-size:13px;text-align:center;font-family:monospace;letter-spacing:0.08em;';
+  badge.textContent = (vaccine.threatLevel || 'unknown').toUpperCase() + '  ·  ' + (vaccine.threatScore || 0) + '/100';
   panel.appendChild(badge);
 
-  // URL
   var urlDiv = document.createElement('div');
-  urlDiv.style.cssText = 'padding:0 16px 12px;font-size:13px;color:#555;word-break:break-all;';
-  urlDiv.textContent = (vaccine.url || '').substring(0, 80);
+  urlDiv.style.cssText = 'padding:0 16px 10px;font-size:11px;color:#6e7681;word-break:break-all;font-family:monospace;';
+  urlDiv.textContent = (vaccine.url || '').substring(0, 80) + ((vaccine.url || '').length > 80 ? '…' : '');
   panel.appendChild(urlDiv);
 
-  // Threats list
   var threats = vaccine.threatsDetected || [];
   if (threats.length > 0) {
     var threatsTitle = document.createElement('div');
-    threatsTitle.style.cssText = 'padding:0 16px;font-weight:bold;font-size:14px;';
-    threatsTitle.textContent = 'Threats Detected: ' + threats.length;
+    threatsTitle.style.cssText = 'padding:0 16px 6px;font-weight:600;font-size:11px;color:#8892a4;font-family:monospace;text-transform:uppercase;letter-spacing:0.08em;';
+    threatsTitle.textContent = 'Threats: ' + threats.length;
     panel.appendChild(threatsTitle);
 
     var list = document.createElement('ul');
-    list.style.cssText = 'margin:8px 16px;padding-left:20px;font-size:13px;';
+    list.style.cssText = 'margin:0 16px 12px;padding-left:18px;font-size:12px;color:#c9d1d9;line-height:1.6;';
     threats.slice(0, 5).forEach(function (t) {
       var li = document.createElement('li');
-      li.textContent = typeof t === 'string' ? t : (t.description || 'Unknown');
+      li.textContent = typeof t === 'string' ? t : (t.description || 'Unknown threat');
       list.appendChild(li);
     });
     if (threats.length > 5) {
       var more = document.createElement('li');
-      more.textContent = '... and ' + (threats.length - 5) + ' more';
-      more.style.color = '#999';
+      more.textContent = '… and ' + (threats.length - 5) + ' more';
+      more.style.color = '#6e7681';
       list.appendChild(more);
     }
     panel.appendChild(list);
   }
 
-  // Footer
   var footer = document.createElement('div');
-  footer.style.cssText = 'padding:12px 16px;text-align:center;font-size:11px;color:#999;border-top:1px solid #eee;';
-  footer.textContent = 'Scanned: ' + new Date(vaccine.timestamp || Date.now()).toLocaleString();
+  footer.style.cssText = 'padding:10px 16px;border-top:1px solid #1e2d3d;font-size:10px;color:#3c4754;font-family:monospace;display:flex;justify-content:space-between;';
+  var ts = document.createElement('span');
+  ts.textContent = new Date(vaccine.timestamp || Date.now()).toLocaleTimeString();
+  footer.appendChild(ts);
+  var brand = document.createElement('span');
+  brand.textContent = 'ScamShield VERIDICT';
+  footer.appendChild(brand);
   panel.appendChild(footer);
 }
 
-/**
- * Handle content script messages
- */
+// ── Content script messages ───────────────────────────────────────────────
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   if (request.type === 'page_loaded' && sender.tab && sender.tab.url) {
     const tabUrl = sender.tab.url;
 
-    // Only process http/https
     if (!tabUrl.startsWith('http://') && !tabUrl.startsWith('https://')) {
       sendResponse({ inject: false });
       return true;
     }
 
     const cachedVaccine = getVaccineFromCache(tabUrl);
-
     if (cachedVaccine) {
       sendResponse({ inject: true, injectionRules: cachedVaccine.rules });
     } else {
-      // Mutex: don't fire duplicate requests for same URL
       if (PENDING_REQUESTS.has(tabUrl)) {
         sendResponse({ inject: false });
         return true;
       }
 
       PENDING_REQUESTS.set(tabUrl, true);
-
       fetchAndCacheVaccine(tabUrl, sender.tab.id)
         .then(function (vaccine) {
           PENDING_REQUESTS.delete(tabUrl);
@@ -176,7 +202,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         });
     }
 
-    return true; // Keep channel open for async response
+    return true;
   }
 
   if (request.type === 'vaccine_applied') {
@@ -188,12 +214,22 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     sendResponse({ vaccine: vaccine });
   }
 
+  // Stats tracking from link scanner
+  if (request.type === 'ss_stat_update') {
+    chrome.storage.session.get(['ss_stat_scanned', 'ss_stat_threats', 'ss_stat_blocked'], function (data) {
+      var updates = {};
+      if (request.scanned) updates.ss_stat_scanned = (data.ss_stat_scanned || 0) + request.scanned;
+      if (request.threats) updates.ss_stat_threats = (data.ss_stat_threats || 0) + request.threats;
+      if (request.blocked) updates.ss_stat_blocked = (data.ss_stat_blocked || 0) + request.blocked;
+      if (Object.keys(updates).length) chrome.storage.session.set(updates);
+    });
+    sendResponse({ ok: true });
+  }
+
   return true;
 });
 
-/**
- * Fetch vaccine and cache it
- */
+// ── Fetch & cache vaccine ─────────────────────────────────────────────────
 async function fetchAndCacheVaccine(url, tabId) {
   try {
     const response = await fetch(API_BASE + '/api/vaccine/scan', {
@@ -207,7 +243,6 @@ async function fetchAndCacheVaccine(url, tabId) {
       return null;
     }
 
-    // Verify response origin
     const responseUrl = new URL(response.url);
     if (responseUrl.hostname !== API_DOMAIN) {
       console.error('ScamShield: Response origin mismatch');
@@ -215,8 +250,6 @@ async function fetchAndCacheVaccine(url, tabId) {
     }
 
     const vaccine = await response.json();
-
-    // Validate response shape before caching
     if (!vaccine || typeof vaccine !== 'object' || !vaccine.threatLevel) {
       console.warn('ScamShield: Invalid vaccine response shape');
       return null;
@@ -224,10 +257,11 @@ async function fetchAndCacheVaccine(url, tabId) {
 
     setVaccineCache(url, vaccine);
 
-    // Update badge if threats detected
     if (tabId && vaccine.threatScore > 50) {
       chrome.action.setBadgeText({ text: '!', tabId: tabId });
       chrome.action.setBadgeBackgroundColor({ color: '#f44336', tabId: tabId });
+    } else if (tabId && vaccine.threatScore > 0) {
+      chrome.action.setBadgeText({ text: '', tabId: tabId });
     }
 
     return vaccine;
@@ -237,9 +271,7 @@ async function fetchAndCacheVaccine(url, tabId) {
   }
 }
 
-/**
- * Cache management
- */
+// ── Cache management ──────────────────────────────────────────────────────
 function setVaccineCache(url, vaccine) {
   VACCINE_CACHE.set(url, {
     vaccine: vaccine,
@@ -252,37 +284,26 @@ function setVaccineCache(url, vaccine) {
 function getVaccineFromCache(url) {
   if (!url) return null;
   var cached = VACCINE_CACHE.get(url);
-
   if (!cached) return null;
-
   if (Date.now() > cached.expires) {
     VACCINE_CACHE.delete(url);
     return null;
   }
-
   return cached;
 }
 
-/**
- * Periodic cache cleanup
- */
+// Periodic cache cleanup
 setInterval(function () {
   var now = Date.now();
   var cleaned = 0;
-
   for (var entry of VACCINE_CACHE) {
     if (now > entry[1].expires) {
       VACCINE_CACHE.delete(entry[0]);
       cleaned++;
     }
   }
-
-  // Also clean stale pending requests
   PENDING_REQUESTS.clear();
-
-  if (cleaned > 0) {
-    console.log('ScamShield: Cleaned', cleaned, 'expired vaccines');
-  }
+  if (cleaned > 0) console.log('ScamShield: Cleaned', cleaned, 'expired vaccines');
 }, 60 * 60 * 1000);
 
-console.log('ScamShield Background Script: Initialized (v1.1.0 - hardened)');
+console.log('ScamShield Background Script: Initialized (v2.0.0)');
