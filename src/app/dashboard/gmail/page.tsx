@@ -43,6 +43,8 @@ export default function GmailShieldPage() {
   const [loading, setLoading] = useState(true);
   const [resultsLoading, setResultsLoading] = useState(false);
   const [disconnecting, setDisconnecting] = useState(false);
+  const [scanning, setScanning] = useState(false);
+  const [scanMessage, setScanMessage] = useState<string | null>(null);
   const [showThreatsOnly, setShowThreatsOnly] = useState(false);
   const [urlError, setUrlError] = useState<string | null>(null);
 
@@ -85,6 +87,26 @@ export default function GmailShieldPage() {
       }
     } catch { /* ignore */ }
     setResultsLoading(false);
+  }
+
+  async function handleScanNow() {
+    setScanning(true);
+    setScanMessage(null);
+    try {
+      const res = await fetch("/api/gmail/poll", { method: "POST" });
+      const data = await res.json();
+      if (data.scanned !== undefined) {
+        setScanMessage(`Scanned ${data.scanned} emails, found ${data.threats} threat${data.threats !== 1 ? "s" : ""}.`);
+        await loadStatus();
+        await loadResults();
+      } else {
+        setScanMessage("Scan complete.");
+      }
+    } catch {
+      setScanMessage("Scan failed. Please try again.");
+    }
+    setScanning(false);
+    setTimeout(() => setScanMessage(null), 5000);
   }
 
   async function handleDisconnect() {
@@ -140,14 +162,24 @@ export default function GmailShieldPage() {
                 <p className="font-semibold text-text-primary text-sm">Connected</p>
                 <p className="text-xs text-text-muted font-mono">{status.googleEmail}</p>
               </div>
-              <button
-                onClick={handleDisconnect}
-                disabled={disconnecting}
-                className="ml-auto flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border text-xs text-text-muted hover:text-danger hover:border-danger/30 transition-colors disabled:opacity-50"
-              >
-                {disconnecting ? <Loader2 size={11} className="animate-spin" /> : <LogOut size={11} />}
-                Disconnect
-              </button>
+              <div className="ml-auto flex items-center gap-2">
+                <button
+                  onClick={handleScanNow}
+                  disabled={scanning}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-shield/30 bg-shield/10 text-xs text-shield hover:bg-shield/20 transition-colors disabled:opacity-50"
+                >
+                  {scanning ? <Loader2 size={11} className="animate-spin" /> : <RefreshCw size={11} />}
+                  {scanning ? "Scanning…" : "Scan Now"}
+                </button>
+                <button
+                  onClick={handleDisconnect}
+                  disabled={disconnecting}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border text-xs text-text-muted hover:text-danger hover:border-danger/30 transition-colors disabled:opacity-50"
+                >
+                  {disconnecting ? <Loader2 size={11} className="animate-spin" /> : <LogOut size={11} />}
+                  Disconnect
+                </button>
+              </div>
             </div>
 
             {/* Stats */}
@@ -170,6 +202,11 @@ export default function GmailShieldPage() {
               </div>
             </div>
 
+            {scanMessage && (
+              <div className="text-xs text-shield bg-shield/10 border border-shield/20 rounded-lg px-3 py-2">
+                {scanMessage}
+              </div>
+            )}
             <p className="text-[10px] text-text-muted flex items-center gap-1.5">
               <Clock size={10} />
               Inbox is scanned automatically once daily. Email content is never stored — only threat scores.
