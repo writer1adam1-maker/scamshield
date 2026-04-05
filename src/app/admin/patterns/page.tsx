@@ -17,6 +17,7 @@ import {
   ExternalLink,
   Database,
   TrendingUp,
+  Rss,
 } from "lucide-react";
 
 // ---------------------------------------------------------------------------
@@ -210,6 +211,11 @@ export default function AdminPatternsPage() {
   const [savedPatterns, setSavedPatterns] = useState<ExtractedPattern[]>([]);
   const [loadingSaved, setLoadingSaved] = useState(false);
 
+  // Live feed sync state
+  const [syncing, setSyncing] = useState(false);
+  const [syncResult, setSyncResult] = useState<string | null>(null);
+  const [syncError, setSyncError] = useState<string | null>(null);
+
   // LLM prompt state
   const [copiedPrompt, setCopiedPrompt] = useState(false);
   const [llmOutput, setLlmOutput] = useState("");
@@ -381,6 +387,35 @@ export default function AdminPatternsPage() {
     }
   };
 
+  // --- Sync from live threat intel feeds ---
+
+  const syncFromFeeds = async () => {
+    setSyncing(true);
+    setSyncResult(null);
+    setSyncError(null);
+    try {
+      const res = await fetch("/api/admin/patterns/sync", { method: "POST" });
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        setSyncError(data.error || "Sync failed.");
+        return;
+      }
+      const parts = [
+        `Processed ${data.urlsProcessed} URLs from URLhaus (${data.sources?.urlhaus ?? 0}) + OpenPhish (${data.sources?.openphish ?? 0})`,
+        `→ ${data.patternsExtracted} extracted`,
+        `✅ ${data.added} added`,
+      ];
+      if (data.upgraded > 0) parts.push(`⬆️ ${data.upgraded} upgraded`);
+      if (data.duplicatesSkipped > 0) parts.push(`${data.duplicatesSkipped} skipped`);
+      parts.push(`Total: ${data.total}`);
+      setSyncResult(parts.join(" · "));
+    } catch {
+      setSyncError("Network error. Check that threat intel feeds are reachable.");
+    } finally {
+      setSyncing(false);
+    }
+  };
+
   // --- Copy prompt ---
 
   const copyPrompt = async () => {
@@ -422,7 +457,29 @@ export default function AdminPatternsPage() {
             <p className="text-sm text-text-muted">Upload fraud data to extract and approve new scam patterns</p>
           </div>
         </div>
+        <button
+          onClick={syncFromFeeds}
+          disabled={syncing}
+          className="flex items-center gap-2 px-4 py-2 rounded-xl bg-shield/10 border border-shield/30 text-shield text-sm font-semibold hover:bg-shield/20 transition-colors disabled:opacity-50"
+        >
+          {syncing ? <Loader2 size={14} className="animate-spin" /> : <Rss size={14} />}
+          {syncing ? "Syncing…" : "Sync from Live Feeds"}
+        </button>
       </div>
+
+      {/* Sync result / error */}
+      {syncResult && (
+        <div className="flex items-start gap-2 p-3 rounded-lg bg-safe/10 border border-safe/20 text-safe text-xs">
+          <CheckCircle size={13} className="shrink-0 mt-0.5" />
+          {syncResult}
+        </div>
+      )}
+      {syncError && (
+        <div className="flex items-start gap-2 p-3 rounded-lg bg-danger/10 border border-danger/20 text-danger text-xs">
+          <AlertTriangle size={13} className="shrink-0 mt-0.5" />
+          {syncError}
+        </div>
+      )}
 
       {/* File Upload Area */}
       <section className="glass-card p-6 space-y-4">

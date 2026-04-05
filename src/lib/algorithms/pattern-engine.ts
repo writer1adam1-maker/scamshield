@@ -2028,6 +2028,413 @@ const URL_MALWARE_PATTERNS: PatternEntry[] = [
 ];
 
 // ═══════════════════════════════════════════════════════════════════════════
+// GROUP 29: FAKE_VPN  (30 patterns)
+// Scam VPN services, "free VPN" data stealers, fake privacy tools
+// ═══════════════════════════════════════════════════════════════════════════
+const FAKE_VPN: PatternEntry[] = [
+  // -- Fake VPN download lures --
+  p('fake_vpn', 'download_lure', 'free vpn unlimited download', 0.75, 'medium'),
+  p('fake_vpn', 'download_lure', 'best free vpn no logs', 0.70, 'medium'),
+  p('fake_vpn', 'download_lure', 'free vpn no registration', 0.70, 'medium'),
+  p('fake_vpn', 'download_lure', 'unlimited free vpn for life', 0.75, 'medium'),
+  p('fake_vpn', 'download_lure', 'vpn free no subscription', 0.65, 'medium'),
+  p('fake_vpn', 'download_lure', 'bypass vpn detection free', 0.75, 'medium'),
+  p('fake_vpn', 'download_lure', 'unblock all sites free vpn', 0.70, 'medium'),
+  p('fake_vpn', 'download_lure', 'turbo vpn download free', 0.65, 'medium'),
+  p('fake_vpn', 'download_lure', 'hola vpn free install', 0.70, 'medium'),
+  p('fake_vpn', 'download_lure', 'super vpn free proxy', 0.65, 'medium'),
+
+  // -- Data harvesting VPN red flags --
+  p('fake_vpn', 'data_harvest', 'vpn logs user activity', 0.85, 'high'),
+  p('fake_vpn', 'data_harvest', 'vpn sells your data', 0.85, 'high'),
+  p('fake_vpn', 'data_harvest', 'free vpn selling browsing data', 0.85, 'high'),
+  p('fake_vpn', 'data_harvest', 'vpn collects personal information', 0.80, 'high'),
+  p('fake_vpn', 'data_harvest', 'your vpn provider selling data', 0.85, 'high'),
+  p('fake_vpn', 'data_harvest', 'vpn with embedded malware', 0.90, 'critical'),
+  p('fake_vpn', 'data_harvest', 'vpn injects ads into browser', 0.80, 'high'),
+  p('fake_vpn', 'data_harvest', 'vpn hijacks dns queries', 0.85, 'high'),
+
+  // -- Fake brand VPN impersonation --
+  p('fake_vpn', 'brand_spoof', 'expressvpn free download crack', 0.90, 'critical'),
+  p('fake_vpn', 'brand_spoof', 'nordvpn cracked free', 0.90, 'critical'),
+  p('fake_vpn', 'brand_spoof', 'surfshark free no pay', 0.85, 'high'),
+  p('fake_vpn', 'brand_spoof', 'cyberghost vpn free crack', 0.90, 'critical'),
+  p('fake_vpn', 'brand_spoof', 'protonvpn unlimited free crack', 0.85, 'high'),
+  p('fake_vpn', 'brand_spoof', 'fake vpn certificate error', 0.80, 'high'),
+  p('fake_vpn', 'brand_spoof', 'vpn certificate not trusted', 0.75, 'medium'),
+
+  // -- Malicious "privacy tool" lures --
+  p('fake_vpn', 'privacy_tool', 'anonymous browsing tool download', 0.70, 'medium'),
+  p('fake_vpn', 'privacy_tool', 'hide ip address tool free', 0.65, 'medium'),
+  p('fake_vpn', 'privacy_tool', 'proxy tool free download', 0.60, 'low'),
+  p('fake_vpn', 'privacy_tool', 'dark web browser download free', 0.75, 'medium'),
+  p('fake_vpn', 'privacy_tool', 'tor browser fake download', 0.85, 'high'),
+];
+
+// ═══════════════════════════════════════════════════════════════════════════
+// GROUP 30: CRYPTO_DRAINER  (30 patterns)
+// NFT/wallet drainer exploits, pig butchering phase 3, fake DEX/DeFi
+// ═══════════════════════════════════════════════════════════════════════════
+const CRYPTO_DRAINER: PatternEntry[] = [
+  // -- Wallet drainer social engineering --
+  p('crypto_drainer', 'wallet_drain', 'connect wallet to claim', 0.90, 'critical'),
+  p('crypto_drainer', 'wallet_drain', 'connect metamask to receive', 0.90, 'critical'),
+  p('crypto_drainer', 'wallet_drain', 'approve transaction to claim nft', 0.95, 'critical'),
+  p('crypto_drainer', 'wallet_drain', 'sign transaction to unlock reward', 0.95, 'critical'),
+  p('crypto_drainer', 'wallet_drain', 'wallet approval required', 0.90, 'critical'),
+  p('crypto_drainer', 'wallet_drain', 'setapprovalforall malicious', 0.95, 'critical'),
+  p('crypto_drainer', 'wallet_drain', 'unlimited token approval', 0.90, 'critical'),
+  p('crypto_drainer', 'wallet_drain', 'drain your wallet', 0.95, 'critical'),
+  p('crypto_drainer', 'wallet_drain', 'nft free mint connect wallet', 0.90, 'critical'),
+  p('crypto_drainer', 'wallet_drain', 'exclusive nft drop connect', 0.85, 'high'),
+
+  // -- Fake DeFi / DEX platforms --
+  p('crypto_drainer', 'fake_defi', 'fake uniswap platform', 0.90, 'critical'),
+  p('crypto_drainer', 'fake_defi', 'fake pancakeswap website', 0.90, 'critical'),
+  p('crypto_drainer', 'fake_defi', 'fake aave compound protocol', 0.90, 'critical'),
+  p('crypto_drainer', 'fake_defi', 'liquidity pool guaranteed apy', 0.85, 'high'),
+  p('crypto_drainer', 'fake_defi', 'yield farming guaranteed returns', 0.85, 'high'),
+  p('crypto_drainer', 'fake_defi', 'defi platform approve all tokens', 0.90, 'critical'),
+  p('crypto_drainer', 'fake_defi', 'fake opensea nft marketplace', 0.90, 'critical'),
+  p('crypto_drainer', 'fake_defi', 'imtoken wallet fake site', 0.85, 'high'),
+
+  // -- Seed phrase / private key theft --
+  p('crypto_drainer', 'seed_theft', 'enter seed phrase to restore', 0.98, 'critical'),
+  p('crypto_drainer', 'seed_theft', 'enter 12 word recovery phrase', 0.98, 'critical'),
+  p('crypto_drainer', 'seed_theft', 'enter 24 word seed phrase', 0.98, 'critical'),
+  p('crypto_drainer', 'seed_theft', 'wallet recovery enter phrase', 0.95, 'critical'),
+  p('crypto_drainer', 'seed_theft', 'submit private key to verify', 0.98, 'critical'),
+  p('crypto_drainer', 'seed_theft', 'import wallet with seed', 0.80, 'high'),
+  p('crypto_drainer', 'seed_theft', 'validate wallet seed phrase', 0.90, 'critical'),
+
+  // -- Rug pull / exit scam signals --
+  p('crypto_drainer', 'rug_pull', 'presale token guaranteed 100x', 0.90, 'critical'),
+  p('crypto_drainer', 'rug_pull', 'ico token presale limited', 0.75, 'medium'),
+  p('crypto_drainer', 'rug_pull', 'meme coin presale invest now', 0.80, 'high'),
+  p('crypto_drainer', 'rug_pull', 'tokenomics guaranteed profit', 0.85, 'high'),
+  p('crypto_drainer', 'rug_pull', 'dev wallet locked guarantee', 0.80, 'high'),
+  p('crypto_drainer', 'rug_pull', 'smart contract audited rugpull safe', 0.80, 'high'),
+];
+
+// ═══════════════════════════════════════════════════════════════════════════
+// GROUP 31: FAKE_STREAMING  (30 patterns)
+// Fake Netflix/Disney+/Spotify credential harvesters, piracy site malware
+// ═══════════════════════════════════════════════════════════════════════════
+const FAKE_STREAMING: PatternEntry[] = [
+  // -- Fake subscription login pages --
+  p('fake_stream', 'fake_login', 'netflix account suspended verify', 0.90, 'critical'),
+  p('fake_stream', 'fake_login', 'netflix login verify account', 0.85, 'high'),
+  p('fake_stream', 'fake_login', 'disney plus account locked', 0.85, 'high'),
+  p('fake_stream', 'fake_login', 'hulu account suspended update', 0.85, 'high'),
+  p('fake_stream', 'fake_login', 'spotify premium account verify', 0.85, 'high'),
+  p('fake_stream', 'fake_login', 'amazon prime account confirm', 0.85, 'high'),
+  p('fake_stream', 'fake_login', 'hbo max login suspended', 0.85, 'high'),
+  p('fake_stream', 'fake_login', 'apple tv billing update required', 0.85, 'high'),
+  p('fake_stream', 'fake_login', 'peacock account payment failed', 0.80, 'high'),
+  p('fake_stream', 'fake_login', 'paramount plus account verify', 0.80, 'high'),
+
+  // -- Fake "free" streaming lures --
+  p('fake_stream', 'free_lure', 'watch movies free no account', 0.70, 'medium'),
+  p('fake_stream', 'free_lure', 'free netflix account generator', 0.85, 'high'),
+  p('fake_stream', 'free_lure', 'free streaming no sign up', 0.65, 'medium'),
+  p('fake_stream', 'free_lure', 'netflix account free for life', 0.85, 'high'),
+  p('fake_stream', 'free_lure', 'free premium streaming account', 0.80, 'high'),
+  p('fake_stream', 'free_lure', 'share streaming account password', 0.70, 'medium'),
+  p('fake_stream', 'free_lure', 'leaked netflix premium account', 0.85, 'high'),
+  p('fake_stream', 'free_lure', 'free hbo max cookie steal', 0.85, 'high'),
+
+  // -- Piracy site malware delivery --
+  p('fake_stream', 'piracy_malware', 'watch online click install player', 0.85, 'high'),
+  p('fake_stream', 'piracy_malware', 'stream movie install codec', 0.85, 'high'),
+  p('fake_stream', 'piracy_malware', 'enable flash to watch movie', 0.90, 'critical'),
+  p('fake_stream', 'piracy_malware', 'install extension to stream', 0.85, 'high'),
+  p('fake_stream', 'piracy_malware', 'torrent download with malware', 0.80, 'high'),
+  p('fake_stream', 'piracy_malware', 'free movie download exe', 0.85, 'high'),
+  p('fake_stream', 'piracy_malware', 'subtitle file malware download', 0.80, 'high'),
+
+  // -- Fake billing phish --
+  p('fake_stream', 'billing_phish', 'netflix billing information update', 0.85, 'high'),
+  p('fake_stream', 'billing_phish', 'subscription payment failed click', 0.80, 'high'),
+  p('fake_stream', 'billing_phish', 'streaming service card declined', 0.80, 'high'),
+  p('fake_stream', 'billing_phish', 'renew subscription avoid interruption', 0.75, 'medium'),
+  p('fake_stream', 'billing_phish', 'streaming account payment verify', 0.80, 'high'),
+];
+
+// ═══════════════════════════════════════════════════════════════════════════
+// GROUP 32: DEEPFAKE_AI_SCAM  (30 patterns)
+// AI voice cloning, celebrity deepfake investment fraud, fake AI tools
+// ═══════════════════════════════════════════════════════════════════════════
+const DEEPFAKE_AI_SCAM: PatternEntry[] = [
+  // -- AI voice / CEO fraud --
+  p('deepfake_ai', 'voice_fraud', 'voice message from ceo transfer', 0.90, 'critical'),
+  p('deepfake_ai', 'voice_fraud', 'ai voice clone fraud call', 0.90, 'critical'),
+  p('deepfake_ai', 'voice_fraud', 'urgent voice message wire transfer', 0.90, 'critical'),
+  p('deepfake_ai', 'voice_fraud', 'impersonated voice call payment', 0.85, 'high'),
+  p('deepfake_ai', 'voice_fraud', 'synthetic voice instruction payment', 0.85, 'high'),
+  p('deepfake_ai', 'voice_fraud', 'grandparent voice scam call', 0.85, 'high'),
+  p('deepfake_ai', 'voice_fraud', 'family member emergency call fake', 0.85, 'high'),
+  p('deepfake_ai', 'voice_fraud', 'cloned voice send money now', 0.90, 'critical'),
+
+  // -- Celebrity/influencer deepfake investment --
+  p('deepfake_ai', 'celeb_deepfake', 'elon musk crypto giveaway video', 0.95, 'critical'),
+  p('deepfake_ai', 'celeb_deepfake', 'celebrity investment opportunity video', 0.85, 'high'),
+  p('deepfake_ai', 'celeb_deepfake', 'deepfake celebrity endorses crypto', 0.90, 'critical'),
+  p('deepfake_ai', 'celeb_deepfake', 'fake video elon bitcoin double', 0.95, 'critical'),
+  p('deepfake_ai', 'celeb_deepfake', 'warren buffett investment ai video', 0.90, 'critical'),
+  p('deepfake_ai', 'celeb_deepfake', 'bill gates crypto giveaway fake', 0.95, 'critical'),
+  p('deepfake_ai', 'celeb_deepfake', 'celebrity ai generated investment', 0.85, 'high'),
+  p('deepfake_ai', 'celeb_deepfake', 'deepfake video endorse trading', 0.85, 'high'),
+
+  // -- Fake AI tool scams --
+  p('deepfake_ai', 'fake_ai_tool', 'chatgpt subscription free download', 0.80, 'high'),
+  p('deepfake_ai', 'fake_ai_tool', 'free gpt4 access download', 0.80, 'high'),
+  p('deepfake_ai', 'fake_ai_tool', 'ai image generator unlimited free', 0.65, 'medium'),
+  p('deepfake_ai', 'fake_ai_tool', 'midjourney free no subscribe', 0.70, 'medium'),
+  p('deepfake_ai', 'fake_ai_tool', 'ai trading bot guaranteed profit', 0.90, 'critical'),
+  p('deepfake_ai', 'fake_ai_tool', 'ai investment robot guaranteed', 0.90, 'critical'),
+  p('deepfake_ai', 'fake_ai_tool', 'artificial intelligence trading profit', 0.80, 'high'),
+  p('deepfake_ai', 'fake_ai_tool', 'ai crypto signals free subscription', 0.80, 'high'),
+
+  // -- AI-generated phishing content --
+  p('deepfake_ai', 'ai_phishing', 'ai generated phishing message', 0.85, 'high'),
+  p('deepfake_ai', 'ai_phishing', 'gpt-generated scam content', 0.85, 'high'),
+  p('deepfake_ai', 'ai_phishing', 'deepfake audio instruction', 0.85, 'high'),
+  p('deepfake_ai', 'ai_phishing', 'ai face swap scam video', 0.85, 'high'),
+  p('deepfake_ai', 'ai_phishing', 'synthetic media fraud scheme', 0.80, 'high'),
+  p('deepfake_ai', 'ai_phishing', 'ai impersonation fraud payment', 0.85, 'high'),
+];
+
+// ═══════════════════════════════════════════════════════════════════════════
+// GROUP 33: STALKERWARE_SPY  (30 patterns)
+// Stalkerware disguised as parental controls, hidden spy apps, RATs
+// ═══════════════════════════════════════════════════════════════════════════
+const STALKERWARE_SPY: PatternEntry[] = [
+  // -- Stalkerware distribution phrases --
+  p('stalkerware', 'distribution', 'hidden spy app install', 0.90, 'critical'),
+  p('stalkerware', 'distribution', 'spy on phone without knowing', 0.95, 'critical'),
+  p('stalkerware', 'distribution', 'track spouse phone secretly', 0.95, 'critical'),
+  p('stalkerware', 'distribution', 'monitor partner phone invisible', 0.95, 'critical'),
+  p('stalkerware', 'distribution', 'keylogger app spouse phone', 0.95, 'critical'),
+  p('stalkerware', 'distribution', 'remote access partner device', 0.85, 'high'),
+  p('stalkerware', 'distribution', 'hidden tracker app android', 0.90, 'critical'),
+  p('stalkerware', 'distribution', 'invisible mode tracking app', 0.90, 'critical'),
+  p('stalkerware', 'distribution', 'stealth monitoring software', 0.90, 'critical'),
+  p('stalkerware', 'distribution', 'spy text messages remotely', 0.95, 'critical'),
+
+  // -- Fake "parental control" stalkerware --
+  p('stalkerware', 'parental_fake', 'track teenager without them knowing', 0.85, 'high'),
+  p('stalkerware', 'parental_fake', 'monitor child phone secretly', 0.75, 'medium'),
+  p('stalkerware', 'parental_fake', 'read their messages without knowing', 0.90, 'critical'),
+  p('stalkerware', 'parental_fake', 'secret parental monitoring app', 0.80, 'high'),
+  p('stalkerware', 'parental_fake', 'child tracker no notification', 0.75, 'medium'),
+
+  // -- Known stalkerware names/families --
+  p('stalkerware', 'known_app', 'mspy stalkerware install', 0.90, 'critical'),
+  p('stalkerware', 'known_app', 'flexispy spy app', 0.90, 'critical'),
+  p('stalkerware', 'known_app', 'hoverwatch phone spy', 0.90, 'critical'),
+  p('stalkerware', 'known_app', 'spyic secret tracker', 0.85, 'high'),
+  p('stalkerware', 'known_app', 'cocospy hidden monitor', 0.85, 'high'),
+  p('stalkerware', 'known_app', 'spyzie covert tracking', 0.85, 'high'),
+  p('stalkerware', 'known_app', 'eyezy spy phone app', 0.85, 'high'),
+
+  // -- RAT disguised as utility --
+  p('stalkerware', 'rat_disguised', 'remote administration tool free', 0.85, 'high'),
+  p('stalkerware', 'rat_disguised', 'njrat download free', 0.90, 'critical'),
+  p('stalkerware', 'rat_disguised', 'darkcomet rat download', 0.90, 'critical'),
+  p('stalkerware', 'rat_disguised', 'remcos rat install', 0.90, 'critical'),
+  p('stalkerware', 'rat_disguised', 'asyncrat free download', 0.90, 'critical'),
+  p('stalkerware', 'rat_disguised', 'quasar rat remote control', 0.90, 'critical'),
+  p('stalkerware', 'rat_disguised', 'poison ivy rat download', 0.90, 'critical'),
+  p('stalkerware', 'rat_disguised', 'bifrost rat install', 0.90, 'critical'),
+];
+
+// ═══════════════════════════════════════════════════════════════════════════
+// GROUP 34: SIM_SWAP_FRAUD  (25 patterns)
+// SIM hijacking, number porting fraud, carrier impersonation
+// ═══════════════════════════════════════════════════════════════════════════
+const SIM_SWAP_FRAUD: PatternEntry[] = [
+  p('sim_swap', 'social_eng', 'transfer phone number to new sim', 0.80, 'high'),
+  p('sim_swap', 'social_eng', 'port your number to us', 0.75, 'medium'),
+  p('sim_swap', 'social_eng', 'sim card transfer request', 0.80, 'high'),
+  p('sim_swap', 'social_eng', 'carrier account pin number', 0.75, 'medium'),
+  p('sim_swap', 'social_eng', 'verify mobile account for transfer', 0.80, 'high'),
+  p('sim_swap', 'social_eng', 'confirm account number to port', 0.80, 'high'),
+  p('sim_swap', 'social_eng', 'mobile number hijacking attack', 0.85, 'high'),
+  p('sim_swap', 'social_eng', 'phone number stolen sim swap', 0.85, 'high'),
+  p('sim_swap', 'social_eng', 'contact carrier to verify identity', 0.70, 'medium'),
+  p('sim_swap', 'social_eng', 'sim swap cryptocurrency theft', 0.90, 'critical'),
+  p('sim_swap', 'carrier_spoof', 'verizon account verification code', 0.75, 'medium'),
+  p('sim_swap', 'carrier_spoof', 'at&t account suspended verify', 0.75, 'medium'),
+  p('sim_swap', 'carrier_spoof', 't-mobile sim replacement request', 0.75, 'medium'),
+  p('sim_swap', 'carrier_spoof', 'mobile carrier security alert', 0.70, 'medium'),
+  p('sim_swap', 'carrier_spoof', 'network provider account verify', 0.65, 'medium'),
+  p('sim_swap', 'otp_theft', 'verification code sent to old number', 0.75, 'medium'),
+  p('sim_swap', 'otp_theft', 'one time password interception', 0.80, 'high'),
+  p('sim_swap', 'otp_theft', 'sms otp stolen sim swap', 0.85, 'high'),
+  p('sim_swap', 'otp_theft', 'two factor bypass sim swap', 0.90, 'critical'),
+  p('sim_swap', 'otp_theft', 'bypass 2fa phone number swap', 0.90, 'critical'),
+  p('sim_swap', 'otp_theft', 'receive your otp enter here', 0.75, 'medium'),
+  p('sim_swap', 'otp_theft', 'authentication code hijacked', 0.80, 'high'),
+  p('sim_swap', 'otp_theft', 'sms hijack number port', 0.85, 'high'),
+  p('sim_swap', 'otp_theft', 'mobile number takeover attack', 0.85, 'high'),
+  p('sim_swap', 'otp_theft', 'porting request to steal crypto', 0.90, 'critical'),
+];
+
+// ═══════════════════════════════════════════════════════════════════════════
+// GROUP 35: DARK_WEB_SCAM  (28 patterns)
+// Dark web market scams, exit scams, fake hacking services
+// ═══════════════════════════════════════════════════════════════════════════
+const DARK_WEB_SCAM: PatternEntry[] = [
+  // -- Fake dark web services --
+  p('dark_web', 'fake_service', 'hire hacker dark web', 0.85, 'high'),
+  p('dark_web', 'fake_service', 'dark web hacker for hire', 0.85, 'high'),
+  p('dark_web', 'fake_service', 'rent a hacker service', 0.85, 'high'),
+  p('dark_web', 'fake_service', 'professional hacker contact', 0.80, 'high'),
+  p('dark_web', 'fake_service', 'certified ethical hacker hire', 0.80, 'high'),
+  p('dark_web', 'fake_service', 'hack instagram account for money', 0.85, 'high'),
+  p('dark_web', 'fake_service', 'hack facebook account service', 0.85, 'high'),
+  p('dark_web', 'fake_service', 'credit score manipulation service', 0.85, 'high'),
+  p('dark_web', 'fake_service', 'change university grades hacker', 0.85, 'high'),
+  p('dark_web', 'fake_service', 'bank account hack service', 0.90, 'critical'),
+  p('dark_web', 'fake_service', 'ddos attack service hire', 0.85, 'high'),
+  p('dark_web', 'fake_service', 'botnet rental service', 0.85, 'high'),
+
+  // -- Exit scam indicators --
+  p('dark_web', 'exit_scam', 'escrow bitcoin dark web', 0.80, 'high'),
+  p('dark_web', 'exit_scam', 'marketplace exit scam', 0.85, 'high'),
+  p('dark_web', 'exit_scam', 'vendor dark web disappear', 0.80, 'high'),
+  p('dark_web', 'exit_scam', 'trusted dark web vendor exit', 0.80, 'high'),
+  p('dark_web', 'exit_scam', 'pay in advance dark web order', 0.80, 'high'),
+  p('dark_web', 'exit_scam', 'onion site exit scam warning', 0.80, 'high'),
+
+  // -- Fake data selling --
+  p('dark_web', 'data_sale', 'buy stolen credit card data', 0.90, 'critical'),
+  p('dark_web', 'data_sale', 'fresh cc dumps dark web', 0.90, 'critical'),
+  p('dark_web', 'data_sale', 'buy ssn fullz dark web', 0.90, 'critical'),
+  p('dark_web', 'data_sale', 'leaked database download dark web', 0.85, 'high'),
+  p('dark_web', 'data_sale', 'buy bank login credentials', 0.90, 'critical'),
+  p('dark_web', 'data_sale', 'stolen identity for sale', 0.90, 'critical'),
+  p('dark_web', 'data_sale', 'carding forum buy cvv', 0.90, 'critical'),
+  p('dark_web', 'data_sale', 'paypal account with balance for sale', 0.90, 'critical'),
+  p('dark_web', 'data_sale', 'verified stripe account for sale', 0.90, 'critical'),
+  p('dark_web', 'data_sale', 'fullz identity package for sale', 0.90, 'critical'),
+];
+
+// ═══════════════════════════════════════════════════════════════════════════
+// GROUP 36: HEALTHCARE_FRAUD  (28 patterns)
+// Fake pharmacies, Medicare/Medicaid scams, medical identity theft
+// ═══════════════════════════════════════════════════════════════════════════
+const HEALTHCARE_FRAUD: PatternEntry[] = [
+  // -- Fake online pharmacy --
+  p('health_fraud', 'fake_pharmacy', 'buy prescription drugs no prescription', 0.90, 'critical'),
+  p('health_fraud', 'fake_pharmacy', 'cheap prescription meds online', 0.75, 'medium'),
+  p('health_fraud', 'fake_pharmacy', 'order opioids online no script', 0.95, 'critical'),
+  p('health_fraud', 'fake_pharmacy', 'canadian pharmacy no prescription', 0.80, 'high'),
+  p('health_fraud', 'fake_pharmacy', 'buy adderall online no rx', 0.90, 'critical'),
+  p('health_fraud', 'fake_pharmacy', 'order xanax no prescription', 0.90, 'critical'),
+  p('health_fraud', 'fake_pharmacy', 'counterfeit medication online', 0.90, 'critical'),
+  p('health_fraud', 'fake_pharmacy', 'buy pills without prescription', 0.85, 'high'),
+  p('health_fraud', 'fake_pharmacy', 'unlicensed pharmacy online', 0.85, 'high'),
+  p('health_fraud', 'fake_pharmacy', 'rogue pharmacy website warning', 0.85, 'high'),
+
+  // -- Medicare / insurance scams --
+  p('health_fraud', 'insurance_scam', 'free medicare benefits claim', 0.80, 'high'),
+  p('health_fraud', 'insurance_scam', 'medicare card replacement fee', 0.85, 'high'),
+  p('health_fraud', 'insurance_scam', 'verify medicare number for coverage', 0.80, 'high'),
+  p('health_fraud', 'insurance_scam', 'medicaid benefits claim verify', 0.80, 'high'),
+  p('health_fraud', 'insurance_scam', 'free medical equipment claim', 0.80, 'high'),
+  p('health_fraud', 'insurance_scam', 'obamacare subsidy claim now', 0.75, 'medium'),
+  p('health_fraud', 'insurance_scam', 'insurance premium overpayment refund', 0.80, 'high'),
+  p('health_fraud', 'insurance_scam', 'health insurance lapsed verify', 0.75, 'medium'),
+
+  // -- Medical identity theft --
+  p('health_fraud', 'identity_theft', 'verify health insurance number', 0.75, 'medium'),
+  p('health_fraud', 'identity_theft', 'confirm medical id number', 0.75, 'medium'),
+  p('health_fraud', 'identity_theft', 'patient portal login phishing', 0.80, 'high'),
+  p('health_fraud', 'identity_theft', 'medical records data breach', 0.75, 'medium'),
+  p('health_fraud', 'identity_theft', 'hospital billing payment phish', 0.80, 'high'),
+  p('health_fraud', 'identity_theft', 'covid relief payment claim', 0.80, 'high'),
+  p('health_fraud', 'identity_theft', 'vaccine registration personal info', 0.70, 'medium'),
+  p('health_fraud', 'identity_theft', 'free covid test kit personal data', 0.75, 'medium'),
+  p('health_fraud', 'identity_theft', 'health department contact tracing scam', 0.75, 'medium'),
+  p('health_fraud', 'identity_theft', 'medical debt collector fake', 0.75, 'medium'),
+];
+
+// ═══════════════════════════════════════════════════════════════════════════
+// GROUP 37: QUISHING_QR  (25 patterns)
+// QR code phishing, fake QR payment fraud, malicious QR redirects
+// ═══════════════════════════════════════════════════════════════════════════
+const QUISHING_QR: PatternEntry[] = [
+  p('quishing', 'qr_phish', 'scan qr code to claim prize', 0.85, 'high'),
+  p('quishing', 'qr_phish', 'scan qr code to verify account', 0.85, 'high'),
+  p('quishing', 'qr_phish', 'qr code to receive payment', 0.80, 'high'),
+  p('quishing', 'qr_phish', 'scan this code to unlock reward', 0.80, 'high'),
+  p('quishing', 'qr_phish', 'qr code to update billing', 0.85, 'high'),
+  p('quishing', 'qr_phish', 'qr code fake parking meter', 0.80, 'high'),
+  p('quishing', 'qr_phish', 'qr code restaurant menu malware', 0.75, 'medium'),
+  p('quishing', 'qr_phish', 'scan qr to login verify identity', 0.80, 'high'),
+  p('quishing', 'qr_phish', 'qr code replacing legitimate sign', 0.80, 'high'),
+  p('quishing', 'qr_phish', 'tampered qr code sticker', 0.85, 'high'),
+  p('quishing', 'qr_payment', 'fake zelle qr payment code', 0.90, 'critical'),
+  p('quishing', 'qr_payment', 'venmo qr code fake', 0.85, 'high'),
+  p('quishing', 'qr_payment', 'paypal qr payment scam', 0.85, 'high'),
+  p('quishing', 'qr_payment', 'crypto qr code payment scam', 0.85, 'high'),
+  p('quishing', 'qr_payment', 'bitcoin qr code send funds', 0.85, 'high'),
+  p('quishing', 'qr_payment', 'cashapp qr code send money', 0.80, 'high'),
+  p('quishing', 'qr_email', 'qr code in email phishing', 0.85, 'high'),
+  p('quishing', 'qr_email', 'scan qr to confirm microsoft login', 0.90, 'critical'),
+  p('quishing', 'qr_email', 'scan qr to verify payroll', 0.85, 'high'),
+  p('quishing', 'qr_email', 'qr code bypasses email filter', 0.85, 'high'),
+  p('quishing', 'qr_email', 'embedded qr redirect phishing', 0.85, 'high'),
+  p('quishing', 'qr_delivery', 'parcel qr code delivery fee', 0.80, 'high'),
+  p('quishing', 'qr_delivery', 'customs qr payment required', 0.80, 'high'),
+  p('quishing', 'qr_delivery', 'scan qr to schedule delivery', 0.70, 'medium'),
+  p('quishing', 'qr_delivery', 'scan qr to track package delivery', 0.65, 'medium'),
+];
+
+// ═══════════════════════════════════════════════════════════════════════════
+// GROUP 38: ACCOUNT_TAKEOVER  (28 patterns)
+// ATO attack patterns, credential stuffing, session hijacking
+// ═══════════════════════════════════════════════════════════════════════════
+const ACCOUNT_TAKEOVER: PatternEntry[] = [
+  // -- Credential stuffing / brute force --
+  p('ato', 'cred_stuff', 'account takeover attack', 0.85, 'high'),
+  p('ato', 'cred_stuff', 'credential stuffing detection', 0.85, 'high'),
+  p('ato', 'cred_stuff', 'bought leaked password list', 0.90, 'critical'),
+  p('ato', 'cred_stuff', 'brute force password attack', 0.85, 'high'),
+  p('ato', 'cred_stuff', 'combolist download attack', 0.90, 'critical'),
+  p('ato', 'cred_stuff', 'leaked login combo list', 0.90, 'critical'),
+  p('ato', 'cred_stuff', 'credential stuffing tools free', 0.85, 'high'),
+  p('ato', 'cred_stuff', 'checker tool account verify', 0.80, 'high'),
+  p('ato', 'cred_stuff', 'openbullet checker config', 0.85, 'high'),
+  p('ato', 'cred_stuff', 'snipr checker cracking tool', 0.85, 'high'),
+
+  // -- Social engineering ATO --
+  p('ato', 'social_eng', 'new login from unknown device', 0.70, 'medium'),
+  p('ato', 'social_eng', 'someone signed into your account', 0.75, 'medium'),
+  p('ato', 'social_eng', 'unusual sign in blocked verify', 0.75, 'medium'),
+  p('ato', 'social_eng', 'login attempt blocked click here', 0.80, 'high'),
+  p('ato', 'social_eng', 'verify it was you sign in', 0.70, 'medium'),
+  p('ato', 'social_eng', 'suspicious activity lock account', 0.75, 'medium'),
+  p('ato', 'social_eng', 'account recovery take action now', 0.80, 'high'),
+
+  // -- Session theft / cookie hijacking --
+  p('ato', 'session_theft', 'session cookie stolen bypass 2fa', 0.90, 'critical'),
+  p('ato', 'session_theft', 'adversary in the middle attack', 0.85, 'high'),
+  p('ato', 'session_theft', 'evilginx phishing session steal', 0.90, 'critical'),
+  p('ato', 'session_theft', 'modlishka reverse proxy phish', 0.90, 'critical'),
+  p('ato', 'session_theft', 'muraena phishing framework', 0.85, 'high'),
+  p('ato', 'session_theft', 'man in browser attack', 0.85, 'high'),
+
+  // -- Account marketplace --
+  p('ato', 'account_market', 'buy verified account cheap', 0.85, 'high'),
+  p('ato', 'account_market', 'aged account for sale', 0.80, 'high'),
+  p('ato', 'account_market', 'sell hacked account shop', 0.85, 'high'),
+  p('ato', 'account_market', 'buy cracked account shop', 0.85, 'high'),
+  p('ato', 'account_market', 'gmail account with history for sale', 0.85, 'high'),
+];
+
+// ═══════════════════════════════════════════════════════════════════════════
 // ASSEMBLED MASTER PATTERNS
 // ═══════════════════════════════════════════════════════════════════════════
 
@@ -2068,6 +2475,17 @@ export const MASTER_PATTERNS: PatternEntry[] = [
   ...FAKE_ANTIVIRUS,
   ...CREDENTIAL_STEALER,
   ...URL_MALWARE_PATTERNS,
+  // New specific threat themes
+  ...FAKE_VPN,
+  ...CRYPTO_DRAINER,
+  ...FAKE_STREAMING,
+  ...DEEPFAKE_AI_SCAM,
+  ...STALKERWARE_SPY,
+  ...SIM_SWAP_FRAUD,
+  ...DARK_WEB_SCAM,
+  ...HEALTHCARE_FRAUD,
+  ...QUISHING_QR,
+  ...ACCOUNT_TAKEOVER,
 ];
 
 // ---------------------------------------------------------------------------
