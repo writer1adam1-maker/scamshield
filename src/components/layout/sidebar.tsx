@@ -47,8 +47,6 @@ const PLAN_LABELS: Record<string, string> = {
   enterprise:   "Enterprise",
 };
 
-const ADMIN_EMAILS = (process.env.NEXT_PUBLIC_ADMIN_EMAILS || "").split(",").map((e) => e.trim().toLowerCase());
-
 export function Sidebar() {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [user, setUser] = useState<SupabaseUser | null>(null);
@@ -67,8 +65,13 @@ export function Sidebar() {
       setUser(authUser);
 
       if (authUser) {
-        const adminCheck = ADMIN_EMAILS.includes((authUser.email || "").toLowerCase());
-        setIsAdmin(adminCheck);
+        try {
+          const adminRes = await fetch("/api/admin/is-admin");
+          if (adminRes.ok) {
+            const adminData = await adminRes.json();
+            setIsAdmin(adminData.isAdmin === true);
+          }
+        } catch { /* keep isAdmin false */ }
 
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const { data } = await (supabase as any)

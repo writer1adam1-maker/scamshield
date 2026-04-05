@@ -1,12 +1,20 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { ScanInput } from "@/components/ui/scan-input";
 import { ScanResults } from "@/components/results/scan-results";
 import type { VERIDICTResult } from "@/lib/algorithms/types";
 import type { ThreatCategory } from "@/components/ui/threat-badge";
 import type { EvidenceType } from "@/components/ui/evidence-card";
 import { Shield, AlertTriangle, TrendingUp, Zap, Eye, Layers, Brain, Globe } from "lucide-react";
+
+interface SiteStats {
+  scansToday: number;
+  threatsToday: number;
+  topThreat: string;
+  topThreatPct: number;
+  avgScore: number;
+}
 
 const CATEGORY_MAP: Record<string, ThreatCategory> = {
   PHISHING: "phishing",
@@ -53,6 +61,14 @@ export default function HomePage() {
   const [scanning, setScanning] = useState(false);
   const [results, setResults] = useState<VERIDICTResult | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [stats, setStats] = useState<SiteStats | null>(null);
+
+  useEffect(() => {
+    fetch("/api/stats")
+      .then((r) => r.json())
+      .then((data: SiteStats) => setStats(data))
+      .catch(() => { /* keep stats null, section will be hidden */ });
+  }, []);
 
   async function handleScan(scanData: { type: string; content: string; file?: File }) {
     setInput(scanData.content);
@@ -61,8 +77,6 @@ export default function HomePage() {
 
     try {
       let res: Response;
-
-      console.log("[ScamShieldy] Starting scan:", scanData.type, scanData.content.slice(0, 80));
 
       if (scanData.type === "screenshot" && scanData.file) {
         const formData = new FormData();
@@ -79,19 +93,14 @@ export default function HomePage() {
         });
       }
 
-      console.log("[ScamShieldy] API response status:", res.status);
-
       if (!res.ok) {
         const body = await res.json().catch(() => ({}));
-        console.error("[ScamShieldy] API error body:", body);
         throw new Error(body.error || `Scan failed (${res.status})`);
       }
 
       const result: VERIDICTResult = await res.json();
-      console.log("[ScamShieldy] Got result — score:", result.score, "evidence:", result.evidence?.length, "layers:", Object.keys(result.layerScores ?? {}));
       setResults(result);
     } catch (err) {
-      console.error("[ScamShieldy] Scan error:", err);
       setError(err instanceof Error ? err.message : "An unexpected error occurred");
     } finally {
       setScanning(false);
@@ -209,44 +218,44 @@ export default function HomePage() {
         </section>
       )}
 
-      {/* Recent Threat Stats */}
-      <section className="max-w-4xl mx-auto pt-8">
-        <h2 className="text-xl font-semibold text-text-primary mb-6 flex items-center gap-2">
-          <TrendingUp className="w-5 h-5 text-shield" />
-          Recent Threat Intelligence
-        </h2>
+      {/* Real-time Threat Stats — only shown when data is available */}
+      {stats && (
+        <section className="max-w-4xl mx-auto pt-8">
+          <h2 className="text-xl font-semibold text-text-primary mb-6 flex items-center gap-2">
+            <TrendingUp className="w-5 h-5 text-shield" />
+            Today&apos;s Threat Intelligence
+          </h2>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <StatCard
-            icon={<Zap className="w-5 h-5" />}
-            label="Scans Today"
-            value="12,847"
-            change="+18%"
-            color="shield"
-          />
-          <StatCard
-            icon={<AlertTriangle className="w-5 h-5" />}
-            label="Threats Detected"
-            value="3,291"
-            change="+7%"
-            color="danger"
-          />
-          <StatCard
-            icon={<Shield className="w-5 h-5" />}
-            label="Top Threat"
-            value="Phishing"
-            subtitle="42% of threats"
-            color="caution"
-          />
-          <StatCard
-            icon={<TrendingUp className="w-5 h-5" />}
-            label="Avg Score"
-            value="47.2"
-            subtitle="out of 100"
-            color="safe"
-          />
-        </div>
-      </section>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <StatCard
+              icon={<Zap className="w-5 h-5" />}
+              label="Scans Today"
+              value={stats.scansToday.toLocaleString()}
+              color="shield"
+            />
+            <StatCard
+              icon={<AlertTriangle className="w-5 h-5" />}
+              label="Threats Detected"
+              value={stats.threatsToday.toLocaleString()}
+              color="danger"
+            />
+            <StatCard
+              icon={<Shield className="w-5 h-5" />}
+              label="Top Threat"
+              value={stats.topThreat}
+              subtitle={stats.topThreatPct > 0 ? `${stats.topThreatPct}% of threats` : undefined}
+              color="caution"
+            />
+            <StatCard
+              icon={<TrendingUp className="w-5 h-5" />}
+              label="Avg Score"
+              value={stats.avgScore > 0 ? stats.avgScore.toFixed(1) : "—"}
+              subtitle="out of 100"
+              color="safe"
+            />
+          </div>
+        </section>
+      )}
     </div>
   );
 }
