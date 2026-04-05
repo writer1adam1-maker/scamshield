@@ -17,6 +17,7 @@ import {
   extractSslSignals,
   shannonEntropy,
 } from './signal-extractors';
+import { scanPatternMaxWeights } from './pattern-engine';
 
 // ---------------------------------------------------------------------------
 // Adaptive thresholds based on input type
@@ -33,6 +34,37 @@ function getAdaptiveThreshold(input: AnalysisInput): number {
   if (input.emailHeaders && input.emailBody) {
     return 75; // Email: slightly lower than default due to rich header data
   }
+
+  // Per-category calibration: high-signal scam types need less evidence
+  const allText = [input.text, input.emailBody, input.smsBody, input.screenshotOcrText]
+    .filter(Boolean).join(' ').toLowerCase();
+
+  if (allText.length > 0) {
+    // Crypto investment scams: highly distinctive vocabulary, lower threshold
+    if (/\b(bitcoin|btc|crypto|ethereum|nft|defi|web3)\b/.test(allText) &&
+        /\b(invest|profit|return|gain|earn|multiply|double)\b/.test(allText)) {
+      return 55;
+    }
+    // Government impersonation: arrest/warrant language is very specific
+    if (/\b(irs|social\s*security|ssa|warrant|arrest|badge\s*number|federal\s*agent)\b/.test(allText)) {
+      return 55;
+    }
+    // Romance/grooming scams: love-bombing in early messages
+    if (/\b(military|deployed|widow|inheritance|love\s*you|darling|sweetheart)\b/.test(allText) &&
+        /\b(send\s*money|wire|bitcoin|gift\s*card|emergency)\b/.test(allText)) {
+      return 55;
+    }
+    // Tech support popup: very specific pattern
+    if (/\b(microsoft|windows|apple)\b/.test(allText) &&
+        /\b(virus|malware|infected|locked|call\s*(us|now|immediately))\b/.test(allText)) {
+      return 58;
+    }
+    // Pig-butchering / investment platform
+    if (/\b(trading\s*platform|liquidity\s*pool|withdrawal\s*fee|unlock\s*funds|tax\s*clearance)\b/.test(allText)) {
+      return 52;
+    }
+  }
+
   return 80; // Default for plain text
 }
 
@@ -199,6 +231,7 @@ function buildStages(): SignalStage[] {
     },
 
     // Stage 1: Basic text pattern analysis (cheap, regex only)
+    // Also bridges in high-weight matches from the Aho-Corasick pattern engine
     {
       name: 'text_pattern',
       cost: 1,
@@ -207,6 +240,22 @@ function buildStages(): SignalStage[] {
         const textBodies = [input.text, input.emailBody, input.smsBody, input.screenshotOcrText].filter(Boolean) as string[];
         for (const body of textBodies) {
           signals.push(...extractTextSignals(body));
+
+          // Pattern-engine bridge: convert high-weight Aho-Corasick matches → Fisher signals
+          // Weight scale: 6-20 → confidence: 0.30-0.95
+          const maxWeights = scanPatternMaxWeights(body);
+          for (const [group, maxWeight] of Object.entries(maxWeights)) {
+            if (maxWeight < 14) continue; // only high-signal matches (14+)
+            const confidence = 0.30 + (maxWeight - 6) / (20 - 6) * 0.65;
+            signals.push({
+              type: SignalType.TEXT,
+              value: group,
+              confidence,
+              rawData: { group, check: 'pattern_engine_weight', weight: maxWeight },
+              label: `[pattern_engine] ${group}: weight ${maxWeight}`,
+              cost: 1,
+            });
+          }
         }
         return signals;
       },

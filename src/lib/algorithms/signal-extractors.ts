@@ -890,6 +890,9 @@ export function extractUrlSignals(url: string): Signal[] {
   return signals;
 }
 
+// Negation phrases that flip the meaning of a pattern match
+const NEGATION_PATTERN = /\b(not|no|never|don['']t|doesn['']t|didn['']t|can['']t|cannot|won['']t|isn['']t|aren['']t|wasn['']t|weren['']t|haven['']t|hasn['']t|hadn['']t|without|avoid|prevent|protect|stop|block|detect|warn|scam\s*alert|beware|watch\s*out)\s+\S+\s*$/i;
+
 // ---------------------------------------------------------------------------
 // extractTextSignals
 // ---------------------------------------------------------------------------
@@ -911,7 +914,10 @@ export function extractTextSignals(text: string): Signal[] {
   for (const { group, patterns } of allPatternGroups) {
     for (const { pattern, label, weight } of patterns) {
       const match = text.match(pattern);
-      if (match) {
+      if (match && match.index !== undefined) {
+        // Negation check: inspect up to 50 chars before the match
+        const preContext = text.substring(Math.max(0, match.index - 50), match.index);
+        if (NEGATION_PATTERN.test(preContext)) continue;
         signals.push({
           type: SignalType.TEXT,
           value: match[0],

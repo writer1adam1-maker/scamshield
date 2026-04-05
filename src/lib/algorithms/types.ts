@@ -158,6 +158,7 @@ export interface VERIDICTResult {
   multilingualDetection?: MultilingualDetectionResult;
   phoneAnalysis?: PhoneAnalysisResult;
   linguisticDeception?: LinguisticDeceptionResult;
+  conversationArc?: import('./conversation-arc').ConversationArcResult;
 }
 
 export interface AnalysisInput {

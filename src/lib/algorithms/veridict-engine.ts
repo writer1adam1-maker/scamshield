@@ -26,6 +26,7 @@ import { assessFinancialRisk } from './risk-scorer';
 import { detectMultilingualScam } from './multilingual-detector';
 import { analyzePhoneNumbers } from './phone-analyzer';
 import { detectLinguisticDeception } from './linguistic-deception';
+import { analyzeConversationArc } from './conversation-arc';
 
 // ---------------------------------------------------------------------------
 // Input preprocessing: URL normalization, text cleaning, encoding detection
@@ -855,12 +856,34 @@ export async function analyzeWithVERIDICT(input: AnalysisInput): Promise<VERIDIC
     });
   }
 
+  // --- Conversation Arc Analysis (grooming phase detection for multi-message exports) ---
+  // Activate when content is long enough to contain a conversation (200+ chars, 3+ lines or timestamps)
+  let conversationArc: import('./conversation-arc').ConversationArcResult | undefined;
+  const looksLikeConversation = fullText.length >= 200 &&
+    (fullText.split('\n').length >= 4 || /\d{1,2}[:/]\d{2}/.test(fullText));
+  if (looksLikeConversation) {
+    conversationArc = analyzeConversationArc(fullText);
+    if (conversationArc.overallRisk > 15) {
+      evidence.push({
+        layer: 'Conversation Arc',
+        finding: `${conversationArc.arcLabel} detected — ${conversationArc.phases.filter(p => p.present).length} grooming phases active`,
+        severity: conversationArc.overallRisk >= 70 ? 'critical'
+          : conversationArc.overallRisk >= 45 ? 'high'
+          : 'medium',
+        detail: conversationArc.criticalFindings.length > 0
+          ? conversationArc.criticalFindings.slice(0, 3).join('; ')
+          : `Risk: ${conversationArc.overallRisk.toFixed(0)}% — arc type: ${conversationArc.arcType}`,
+      });
+    }
+  }
+
   return {
     ...partialResult,
     financialRisk,
     multilingualDetection: multilingualDetection.detected ? multilingualDetection : undefined,
     phoneAnalysis: phoneAnalysis.detected ? phoneAnalysis : undefined,
     linguisticDeception: linguisticDeception.score > 5 ? linguisticDeception : undefined,
+    conversationArc,
   };
 }
 
