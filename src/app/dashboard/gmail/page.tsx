@@ -48,6 +48,7 @@ export default function GmailShieldPage() {
   const [scanMessage, setScanMessage] = useState<string | null>(null);
   const [savingFrequency, setSavingFrequency] = useState(false);
   const [showThreatsOnly, setShowThreatsOnly] = useState(false);
+  const [resultLimit, setResultLimit] = useState(30);
   const [urlError, setUrlError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -67,7 +68,8 @@ export default function GmailShieldPage() {
 
   useEffect(() => {
     if (status?.connected) loadResults();
-  }, [status, showThreatsOnly]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [status, showThreatsOnly, resultLimit]);
 
   async function loadStatus() {
     setLoading(true);
@@ -81,7 +83,7 @@ export default function GmailShieldPage() {
   async function loadResults() {
     setResultsLoading(true);
     try {
-      const url = `/api/gmail/scan-results?limit=30${showThreatsOnly ? "&threats=1" : ""}`;
+      const url = `/api/gmail/scan-results?limit=${resultLimit}${showThreatsOnly ? "&threats=1" : ""}`;
       const res = await fetch(url);
       if (res.ok) {
         const data = await res.json();
@@ -301,6 +303,15 @@ export default function GmailShieldPage() {
               Recent Email Scans
             </h2>
             <div className="flex items-center gap-2">
+              <select
+                value={resultLimit}
+                onChange={(e) => setResultLimit(Number(e.target.value))}
+                className="text-[11px] bg-abyss/80 border border-border/40 text-text-secondary rounded-lg px-2 py-1 focus:outline-none focus:border-shield/40"
+              >
+                {[10, 20, 30, 50, 70, 90].map((n) => (
+                  <option key={n} value={n}>Last {n}</option>
+                ))}
+              </select>
               <button
                 onClick={() => setShowThreatsOnly(!showThreatsOnly)}
                 className={clsx(

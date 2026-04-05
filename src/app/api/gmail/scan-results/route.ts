@@ -8,7 +8,7 @@ export async function GET(req: NextRequest) {
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const { searchParams } = new URL(req.url);
-  const limit = Math.min(50, parseInt(searchParams.get("limit") ?? "20", 10));
+  const limit = Math.min(90, Math.max(10, parseInt(searchParams.get("limit") ?? "30", 10)));
   const offset = Math.max(0, parseInt(searchParams.get("offset") ?? "0", 10));
   const threatOnly = searchParams.get("threats") === "1";
 

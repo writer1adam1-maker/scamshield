@@ -1,9 +1,10 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
+import Link from "next/link";
 import {
   Shield, Users, Trash2, RefreshCw, Settings, Crown, User,
-  AlertTriangle, Loader2, CheckCircle,
+  AlertTriangle, Loader2, CheckCircle, Brain,
 } from "lucide-react";
 
 interface AdminUser {
@@ -193,6 +194,23 @@ export default function AdminDashboard() {
           {error}
         </div>
       )}
+
+      {/* Quick links */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <Link
+          href="/admin/patterns"
+          className="glass-card p-4 flex items-center gap-3 hover:border-shield/40 transition-colors group"
+        >
+          <div className="w-10 h-10 rounded-xl bg-shield/10 border border-shield/20 flex items-center justify-center">
+            <Brain className="w-5 h-5 text-shield" />
+          </div>
+          <div>
+            <div className="font-semibold text-text-primary group-hover:text-shield transition-colors">Pattern Manager</div>
+            <div className="text-xs text-text-muted">Upload fraud data, extract & approve patterns for the VERIDICT engine</div>
+          </div>
+          <span className="ml-auto text-text-muted text-lg">→</span>
+        </Link>
+      </div>
 
       {/* Stats */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">

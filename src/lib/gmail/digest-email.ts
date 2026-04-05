@@ -5,7 +5,8 @@
 
 import { Resend } from "resend";
 
-const resend = new Resend(process.env.RESEND_API_KEY);
+const RESEND_API_KEY = process.env.RESEND_API_KEY;
+const resend = RESEND_API_KEY ? new Resend(RESEND_API_KEY) : null;
 const FROM = process.env.RESEND_FROM || "ScamShield <noreply@scamshieldy.com>";
 
 export type DigestFrequency = "hourly" | "12h" | "daily" | "weekly" | "never";
@@ -193,6 +194,11 @@ export async function sendDigestEmail(payload: DigestPayload): Promise<void> {
   </table>
 </body>
 </html>`;
+
+  if (!resend) {
+    console.warn("[digest-email] RESEND_API_KEY not set — email not sent. Add it in Vercel env vars.");
+    return;
+  }
 
   await resend.emails.send({
     from: FROM,

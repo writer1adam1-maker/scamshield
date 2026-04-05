@@ -34,7 +34,7 @@ export async function fetchNewMessages(
   // If we have a historyId, use history.list for incremental sync
   if (historyId) {
     const histRes = await fetch(
-      `${GMAIL_API}/users/me/history?startHistoryId=${historyId}&historyTypes=messageAdded&maxResults=50`,
+      `${GMAIL_API}/users/me/history?startHistoryId=${historyId}&maxResults=50`,
       { headers }
     );
 
@@ -74,7 +74,7 @@ async function fetchRecentMessages(
 ): Promise<GmailHistoryResult> {
   // Get list of recent message IDs
   const listRes = await fetch(
-    `${GMAIL_API}/users/me/messages?maxResults=20`,
+    `${GMAIL_API}/users/me/messages?maxResults=50`,
     { headers }
   );
 
