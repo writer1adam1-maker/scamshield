@@ -15,7 +15,7 @@
   'use strict';
 
   // ─── PINNED CONFIG (never loaded from external source) ───
-  const API_DOMAIN = 'scamshield-green.vercel.app';
+  const API_DOMAIN = 'scamshieldy.com';
   const API_BASE = 'https://' + API_DOMAIN;
   const MAX_PAYLOAD_AGE_MS = 60 * 60 * 1000; // 1 hour
   const MAX_SCRIPT_LENGTH = 100000; // 100KB max injection payload

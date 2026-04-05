@@ -27,6 +27,8 @@
 
   // Threat levels that trigger warning intercept
   const WARN_LEVELS = new Set(['high', 'critical']);
+  // Threat levels that show non-green dot
+  const RISKY_LEVELS = new Set(['low', 'medium', 'high', 'critical']);
 
   // ── State ─────────────────────────────────────────────────────────────────
   const hostCache = new Map();       // hostname → { level, score, category, ts }
@@ -37,6 +39,7 @@
   let hoverCard = null;
 
   // ── Load API key & enabled flag from storage ─────────────────────────────
+  let noKeyWarningShown = false;
   chrome.storage.sync.get(['ss_api_key', 'ss_enabled'], function (data) {
     apiKey = data.ss_api_key || null;
     enabled = data.ss_enabled !== false; // default true
@@ -161,17 +164,34 @@
         setCache(host, { level: level, score: score, category: category });
         updateDotsForHost(host, level, score, category);
       })
-      .catch(function () {
+      .catch(function (err) {
         pendingHosts.delete(host);
-        // Silent fail — remove scanning dot
-        updateDotsForHost(host, null, 0, '');
+        var msg = String(err);
+        if (msg.includes('401') || msg.includes('403')) {
+          // No API key or invalid key — show "setup" state once
+          updateDotsForHost(host, null, 0, '');
+          if (!noKeyWarningShown) {
+            noKeyWarningShown = true;
+            showNoKeyBanner();
+          }
+        } else {
+          // Network error — remove dot silently
+          updateDotsForHost(host, null, 0, '');
+        }
       });
   }
 
   // ── Apply / update dot badges ─────────────────────────────────────────────
   function applyDot(a, level, score, category) {
-    // Don't badge anchors inside nav/footer/buttons with no visible text
-    if (a.closest('nav') || a.closest('footer') || a.closest('[role="navigation"]')) return;
+    // Skip anchors inside nav/footer/buttons/menus — too much noise
+    if (a.closest('nav') || a.closest('footer') || a.closest('[role="navigation"]') ||
+        a.closest('[role="menu"]') || a.closest('[role="menubar"]') ||
+        a.closest('button') || a.closest('header')) return;
+    // Skip links with no text content (icon-only links, logo links)
+    var linkText = (a.textContent || '').trim();
+    if (linkText.length < 2 && !a.querySelector('img')) return;
+    // Skip safe dots entirely — only show dots for risky/scanning/unknown
+    if (level === 'safe') { removeDot(a); return; }
     if (!level) { removeDot(a); return; }
 
     var existing = dotMap.get(a);
@@ -270,11 +290,10 @@
     powered.textContent = 'ScamShield VERIDICT';
     hoverCard.appendChild(powered);
 
-    // Position
-    var x = e.clientX + 12;
-    var y = e.clientY + 12;
-    if (x + 300 > window.innerWidth) x = e.clientX - 310;
-    if (y + 160 > window.innerHeight) y = e.clientY - 170;
+    // Position — clamp to viewport so card never goes off-screen
+    var cardW = 310, cardH = 180;
+    var x = Math.max(8, Math.min(e.clientX + 12, window.innerWidth - cardW - 8));
+    var y = Math.max(8, Math.min(e.clientY + 12, window.innerHeight - cardH - 8));
     hoverCard.style.left = x + 'px';
     hoverCard.style.top = y + 'px';
 
@@ -347,6 +366,34 @@
     box.appendChild(actions);
     overlay.appendChild(box);
     document.documentElement.appendChild(overlay);
+  }
+
+  // ── No API key banner ─────────────────────────────────────────────────────
+  function showNoKeyBanner() {
+    if (document.getElementById('ss-nokey-banner')) return;
+    var banner = document.createElement('div');
+    banner.id = 'ss-nokey-banner';
+    banner.style.cssText = 'position:fixed;bottom:16px;right:16px;z-index:2147483646;background:#0d1117;border:1px solid #00d4ff40;border-radius:10px;padding:12px 16px;font-family:-apple-system,BlinkMacSystemFont,sans-serif;font-size:12px;color:#8892a4;box-shadow:0 4px 20px rgba(0,0,0,0.5);max-width:280px;';
+    var title = document.createElement('div');
+    title.style.cssText = 'color:#00d4ff;font-weight:700;margin-bottom:4px;font-size:13px;';
+    title.textContent = '⚡ ScamShield';
+    banner.appendChild(title);
+    var msg = document.createElement('div');
+    msg.textContent = 'Add your API key in extension settings to enable link scanning.';
+    banner.appendChild(msg);
+    var link = document.createElement('a');
+    link.href = 'https://scamshieldy.com/settings';
+    link.target = '_blank';
+    link.style.cssText = 'display:inline-block;margin-top:8px;color:#00d4ff;font-size:11px;text-decoration:none;';
+    link.textContent = 'Get API key →';
+    banner.appendChild(link);
+    var close = document.createElement('button');
+    close.textContent = '✕';
+    close.style.cssText = 'position:absolute;top:8px;right:8px;background:none;border:none;color:#6e7681;cursor:pointer;font-size:12px;padding:0;';
+    close.addEventListener('click', function () { banner.remove(); });
+    banner.appendChild(close);
+    document.documentElement.appendChild(banner);
+    setTimeout(function () { if (banner.parentNode) banner.remove(); }, 8000);
   }
 
   // ── Cache helpers ─────────────────────────────────────────────────────────
