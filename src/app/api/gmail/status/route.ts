@@ -12,7 +12,7 @@ export async function GET(req: NextRequest) {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data: conn } = await (db as any)
     .from("gmail_connections")
-    .select("google_email, connected_at, last_polled_at, emails_scanned_total, threats_found_total, is_active")
+    .select("google_email, connected_at, last_polled_at, emails_scanned_total, threats_found_total, is_active, digest_frequency")
     .eq("user_id", user.id)
     .single();
 
@@ -27,5 +27,6 @@ export async function GET(req: NextRequest) {
     lastPolledAt: conn.last_polled_at,
     emailsScannedTotal: conn.emails_scanned_total,
     threatsFoundTotal: conn.threats_found_total,
+    digestFrequency: conn.digest_frequency ?? "daily",
   });
 }

@@ -11,17 +11,19 @@ import type { GmailMessage } from "./gmail-client";
 interface ScanEmailsResult {
   scanned: number;
   threats: number;
+  results: { subject_preview: string | null; sender_domain: string | null; threat_level: string; score: number }[];
 }
 
 export async function scanEmails(
   messages: GmailMessage[],
   userId: string
 ): Promise<ScanEmailsResult> {
-  if (messages.length === 0) return { scanned: 0, threats: 0 };
+  if (messages.length === 0) return { scanned: 0, threats: 0, results: [] };
 
   const db = createServiceRoleClient();
   let scanned = 0;
   let threats = 0;
+  const results: ScanEmailsResult["results"] = [];
 
   // Process in series to avoid hitting internal algorithm rate limits
   for (const msg of messages) {
@@ -41,6 +43,13 @@ export async function scanEmails(
       const threatLevel = result.threatLevel;
       if (threatLevel === "HIGH" || threatLevel === "CRITICAL") threats++;
 
+      results.push({
+        subject_preview: msg.subject ? msg.subject.substring(0, 80) : null,
+        sender_domain: msg.senderDomain || null,
+        threat_level: threatLevel,
+        score: result.score,
+      });
+
       // Upsert result — don't store duplicate message IDs
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       await (db as any).from("gmail_scan_results").upsert({
@@ -59,5 +68,5 @@ export async function scanEmails(
     }
   }
 
-  return { scanned, threats };
+  return { scanned, threats, results };
 }

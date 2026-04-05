@@ -15,6 +15,7 @@ interface GmailStatus {
   lastPolledAt?: string;
   emailsScannedTotal?: number;
   threatsFoundTotal?: number;
+  digestFrequency?: string;
 }
 
 interface ScanResult {
@@ -45,6 +46,7 @@ export default function GmailShieldPage() {
   const [disconnecting, setDisconnecting] = useState(false);
   const [scanning, setScanning] = useState(false);
   const [scanMessage, setScanMessage] = useState<string | null>(null);
+  const [savingFrequency, setSavingFrequency] = useState(false);
   const [showThreatsOnly, setShowThreatsOnly] = useState(false);
   const [urlError, setUrlError] = useState<string | null>(null);
 
@@ -107,6 +109,19 @@ export default function GmailShieldPage() {
     }
     setScanning(false);
     setTimeout(() => setScanMessage(null), 5000);
+  }
+
+  async function handleFrequencyChange(frequency: string) {
+    setSavingFrequency(true);
+    try {
+      await fetch("/api/gmail/settings", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ frequency }),
+      });
+      setStatus((s) => s ? { ...s, digestFrequency: frequency } : s);
+    } catch { /* ignore */ }
+    setSavingFrequency(false);
   }
 
   async function handleDisconnect() {
@@ -207,6 +222,28 @@ export default function GmailShieldPage() {
                 {scanMessage}
               </div>
             )}
+
+            {/* Email digest frequency */}
+            <div className="flex items-center justify-between pt-1 border-t border-border/30">
+              <div className="flex items-center gap-1.5">
+                <Mail size={11} className="text-text-muted" />
+                <span className="text-[11px] text-text-muted">Email digest</span>
+                {savingFrequency && <Loader2 size={10} className="animate-spin text-text-muted" />}
+              </div>
+              <select
+                value={status.digestFrequency ?? "daily"}
+                onChange={(e) => handleFrequencyChange(e.target.value)}
+                disabled={savingFrequency}
+                className="text-[11px] bg-abyss/80 border border-border/40 text-text-secondary rounded-lg px-2 py-1 focus:outline-none focus:border-shield/40 disabled:opacity-50"
+              >
+                <option value="hourly">Every hour</option>
+                <option value="12h">Every 12 hours</option>
+                <option value="daily">Daily</option>
+                <option value="weekly">Weekly</option>
+                <option value="never">Never</option>
+              </select>
+            </div>
+
             <p className="text-[10px] text-text-muted flex items-center gap-1.5">
               <Clock size={10} />
               Inbox is scanned automatically once daily. Email content is never stored — only threat scores.
