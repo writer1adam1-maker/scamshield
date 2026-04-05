@@ -24,7 +24,13 @@ export async function PATCH(req: NextRequest) {
     .eq("user_id", user.id)
     .eq("is_active", true);
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  if (error) {
+    if (error.message?.includes("digest_frequency") || error.message?.includes("column")) {
+      // Migration 009 not run yet — silently succeed (column will be added when migration runs)
+      return NextResponse.json({ ok: true, frequency, warning: "migration_pending" });
+    }
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
 
   return NextResponse.json({ ok: true, frequency });
 }

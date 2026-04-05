@@ -25,14 +25,28 @@ export async function POST(req: NextRequest) {
 
   // Fetch all active connections including digest prefs
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data: connections, error } = await (db as any)
+  let { data: connections, error } = await (db as any)
     .from("gmail_connections")
     .select("id, user_id, encrypted_refresh_token, history_id, emails_scanned_total, threats_found_total, digest_frequency, last_digest_sent_at, user_email, google_email")
     .eq("is_active", true);
 
   if (error) {
-    console.error("[gmail/poll] Failed to fetch connections:", error.message);
-    return NextResponse.json({ error: "DB error" }, { status: 500 });
+    // Migration 009 may not be run yet — fall back to base columns without digest fields
+    if (error.message?.includes("column") || error.message?.includes("does not exist")) {
+      console.warn("[gmail/poll] Digest columns missing (migration 009 not run), falling back to base columns");
+      const fallback = await (db as any)
+        .from("gmail_connections")
+        .select("id, user_id, encrypted_refresh_token, history_id, emails_scanned_total, threats_found_total, google_email")
+        .eq("is_active", true);
+      if (fallback.error) {
+        console.error("[gmail/poll] Failed to fetch connections:", fallback.error.message);
+        return NextResponse.json({ error: "DB error" }, { status: 500 });
+      }
+      connections = fallback.data;
+    } else {
+      console.error("[gmail/poll] Failed to fetch connections:", error.message);
+      return NextResponse.json({ error: "DB error" }, { status: 500 });
+    }
   }
 
   if (!connections || connections.length === 0) {

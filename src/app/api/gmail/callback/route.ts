@@ -57,15 +57,39 @@ export async function GET(req: NextRequest) {
     const encryptedRefreshToken = await encryptToken(tokens.refresh_token);
 
     const db = createServiceRoleClient();
+
+    // Fetch the user's ScamShield account email for digest delivery
+    const { data: userData } = await db.auth.admin.getUserById(userId);
+    const userEmail = userData?.user?.email ?? null;
+
+    // Try upsert with user_email (requires migration 009).
+    // Fall back to base upsert if column doesn't exist yet.
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    await (db as any).from("gmail_connections").upsert({
+    const upsertResult = await (db as any).from("gmail_connections").upsert({
       user_id: userId,
       google_email: googleEmail,
+      user_email: userEmail,
       encrypted_refresh_token: encryptedRefreshToken,
-      history_id: null, // will be set on first poll
+      history_id: null,
       is_active: true,
       connected_at: new Date().toISOString(),
     }, { onConflict: "user_id" });
+
+    if (upsertResult.error) {
+      // If user_email column missing, retry without it
+      if (upsertResult.error.message?.includes("user_email") || upsertResult.error.message?.includes("column")) {
+        await (db as any).from("gmail_connections").upsert({
+          user_id: userId,
+          google_email: googleEmail,
+          encrypted_refresh_token: encryptedRefreshToken,
+          history_id: null,
+          is_active: true,
+          connected_at: new Date().toISOString(),
+        }, { onConflict: "user_id" });
+      } else {
+        throw new Error(upsertResult.error.message);
+      }
+    }
 
     const successResponse = NextResponse.redirect(new URL("/dashboard/gmail?connected=1", req.url));
     // Clear nonce cookie — single use only

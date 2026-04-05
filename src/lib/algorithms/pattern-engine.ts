@@ -1683,6 +1683,351 @@ const FINANCIAL_FRAUD_WEB: PatternEntry[] = [
 ];
 
 // ═══════════════════════════════════════════════════════════════════════════
+// GROUP 24: MALWARE_DISTRIBUTION  (60 patterns)
+// Phrases used to trick users into downloading malware
+// ═══════════════════════════════════════════════════════════════════════════
+const MALWARE_DISTRIBUTION: PatternEntry[] = [
+  // -- Download trigger phrases --
+  p('malware_dist', 'download_trigger', 'download required to continue', 0.90, 'critical'),
+  p('malware_dist', 'download_trigger', 'install required to view', 0.90, 'critical'),
+  p('malware_dist', 'download_trigger', 'plugin required to play', 0.85, 'high'),
+  p('malware_dist', 'download_trigger', 'update required to access', 0.85, 'high'),
+  p('malware_dist', 'download_trigger', 'download the player to continue', 0.85, 'high'),
+  p('malware_dist', 'download_trigger', 'install codec to watch', 0.90, 'critical'),
+  p('malware_dist', 'download_trigger', 'flash player update required', 0.95, 'critical'),
+  p('malware_dist', 'download_trigger', 'java plugin required', 0.90, 'critical'),
+  p('malware_dist', 'download_trigger', 'media player update download', 0.85, 'high'),
+  p('malware_dist', 'download_trigger', 'browser extension required', 0.80, 'high'),
+  p('malware_dist', 'download_trigger', 'click to download setup', 0.80, 'high'),
+  p('malware_dist', 'download_trigger', 'download installer to unlock', 0.85, 'high'),
+  p('malware_dist', 'download_trigger', 'run the file to continue', 0.85, 'high'),
+  p('malware_dist', 'download_trigger', 'execute the downloaded file', 0.90, 'critical'),
+  p('malware_dist', 'download_trigger', 'allow all permissions', 0.80, 'high'),
+  p('malware_dist', 'download_trigger', 'disable antivirus to install', 0.95, 'critical'),
+  p('malware_dist', 'download_trigger', 'turn off windows defender', 0.95, 'critical'),
+  p('malware_dist', 'download_trigger', 'add to exceptions list', 0.75, 'medium'),
+  p('malware_dist', 'download_trigger', 'false positive warning ignore', 0.85, 'high'),
+  p('malware_dist', 'download_trigger', 'antivirus will flag this', 0.90, 'critical'),
+
+  // -- Malicious file type indicators --
+  p('malware_dist', 'file_type', 'download .exe file', 0.85, 'high'),
+  p('malware_dist', 'file_type', 'download setup.exe', 0.80, 'high'),
+  p('malware_dist', 'file_type', 'click to open .bat file', 0.90, 'critical'),
+  p('malware_dist', 'file_type', 'run .vbs script', 0.90, 'critical'),
+  p('malware_dist', 'file_type', 'open macro enabled document', 0.90, 'critical'),
+  p('malware_dist', 'file_type', 'enable macros to view', 0.95, 'critical'),
+  p('malware_dist', 'file_type', 'enable content to view document', 0.95, 'critical'),
+  p('malware_dist', 'file_type', 'enable editing to view', 0.85, 'high'),
+  p('malware_dist', 'file_type', 'protected document enable', 0.85, 'high'),
+  p('malware_dist', 'file_type', 'zip password infected', 0.80, 'high'),
+
+  // -- Drive-by download indicators --
+  p('malware_dist', 'drive_by', 'your computer is infected', 0.90, 'critical'),
+  p('malware_dist', 'drive_by', 'virus detected on your device', 0.90, 'critical'),
+  p('malware_dist', 'drive_by', 'malware found scan now', 0.90, 'critical'),
+  p('malware_dist', 'drive_by', 'critical error detected', 0.80, 'high'),
+  p('malware_dist', 'drive_by', 'performance issue detected', 0.70, 'medium'),
+  p('malware_dist', 'drive_by', 'your browser is outdated', 0.80, 'high'),
+  p('malware_dist', 'drive_by', 'security risk detected', 0.80, 'high'),
+  p('malware_dist', 'drive_by', 'click allow to prove you are not a robot', 0.90, 'critical'),
+  p('malware_dist', 'drive_by', 'press allow to continue', 0.80, 'high'),
+  p('malware_dist', 'drive_by', 'click allow to watch video', 0.85, 'high'),
+
+  // -- Fake software/update distribution --
+  p('malware_dist', 'fake_software', 'free download crack', 0.85, 'high'),
+  p('malware_dist', 'fake_software', 'full version free download', 0.80, 'high'),
+  p('malware_dist', 'fake_software', 'keygen free download', 0.85, 'high'),
+  p('malware_dist', 'fake_software', 'serial number generator', 0.80, 'high'),
+  p('malware_dist', 'fake_software', 'license key generator free', 0.85, 'high'),
+  p('malware_dist', 'fake_software', 'patch download free', 0.75, 'medium'),
+  p('malware_dist', 'fake_software', 'cracked version download', 0.85, 'high'),
+  p('malware_dist', 'fake_software', 'nulled script download', 0.80, 'high'),
+  p('malware_dist', 'fake_software', 'pirated software download', 0.85, 'high'),
+  p('malware_dist', 'fake_software', 'bypass activation download', 0.85, 'high'),
+  p('malware_dist', 'fake_software', 'warez download', 0.85, 'high'),
+  p('malware_dist', 'fake_software', 'torrent direct download', 0.65, 'medium'),
+  p('malware_dist', 'fake_software', 'offline installer direct link', 0.65, 'medium'),
+  p('malware_dist', 'fake_software', 'portable version no install', 0.60, 'low'),
+  p('malware_dist', 'fake_software', 'repack compressed download', 0.65, 'medium'),
+  p('malware_dist', 'fake_software', 'fitgirl repacks download', 0.70, 'medium'),
+  p('malware_dist', 'fake_software', 'igg games download', 0.70, 'medium'),
+  p('malware_dist', 'fake_software', 'oceanofgames download', 0.70, 'medium'),
+  p('malware_dist', 'fake_software', 'skidrow codex download', 0.75, 'medium'),
+  p('malware_dist', 'fake_software', 'razor1911 download', 0.75, 'medium'),
+];
+
+// ═══════════════════════════════════════════════════════════════════════════
+// GROUP 25: RANSOMWARE_DELIVERY  (50 patterns)
+// Ransomware pretexts, macro-enabled docs, dropper language
+// ═══════════════════════════════════════════════════════════════════════════
+const RANSOMWARE_DELIVERY: PatternEntry[] = [
+  // -- Invoice / document lures (most common delivery vector) --
+  p('ransomware', 'invoice_lure', 'invoice attached enable macros', 0.95, 'critical'),
+  p('ransomware', 'invoice_lure', 'payment confirmation attached', 0.80, 'high'),
+  p('ransomware', 'invoice_lure', 'open attached invoice document', 0.75, 'medium'),
+  p('ransomware', 'invoice_lure', 'enable content to view invoice', 0.95, 'critical'),
+  p('ransomware', 'invoice_lure', 'protected document click enable', 0.95, 'critical'),
+  p('ransomware', 'invoice_lure', 'word document with macros', 0.90, 'critical'),
+  p('ransomware', 'invoice_lure', 'excel file enable editing', 0.90, 'critical'),
+  p('ransomware', 'invoice_lure', 'docm file download', 0.90, 'critical'),
+  p('ransomware', 'invoice_lure', 'xlsm attachment open', 0.90, 'critical'),
+  p('ransomware', 'invoice_lure', 'pdf with javascript', 0.85, 'high'),
+
+  // -- Ransomware note phrases --
+  p('ransomware', 'ransom_note', 'your files are encrypted', 0.98, 'critical'),
+  p('ransomware', 'ransom_note', 'all your files have been encrypted', 0.98, 'critical'),
+  p('ransomware', 'ransom_note', 'your personal files are encrypted', 0.98, 'critical'),
+  p('ransomware', 'ransom_note', 'pay ransom to decrypt files', 0.98, 'critical'),
+  p('ransomware', 'ransom_note', 'pay to restore your files', 0.95, 'critical'),
+  p('ransomware', 'ransom_note', 'bitcoin payment for decryption', 0.95, 'critical'),
+  p('ransomware', 'ransom_note', 'decryption key will be provided', 0.90, 'critical'),
+  p('ransomware', 'ransom_note', 'contact us to recover files', 0.85, 'high'),
+  p('ransomware', 'ransom_note', 'unique decryption key', 0.90, 'critical'),
+  p('ransomware', 'ransom_note', 'files will be deleted permanently', 0.85, 'high'),
+  p('ransomware', 'ransom_note', 'ransom payment deadline', 0.95, 'critical'),
+  p('ransomware', 'ransom_note', 'price increases every 24 hours', 0.90, 'critical'),
+  p('ransomware', 'ransom_note', 'do not rename encrypted files', 0.90, 'critical'),
+  p('ransomware', 'ransom_note', 'do not try to decrypt files yourself', 0.90, 'critical'),
+  p('ransomware', 'ransom_note', 'we have your data leaked', 0.90, 'critical'),
+  p('ransomware', 'ransom_note', 'double extortion payment', 0.90, 'critical'),
+
+  // -- Known ransomware family indicators --
+  p('ransomware', 'family_indicator', 'wanna cry ransomware', 0.95, 'critical'),
+  p('ransomware', 'family_indicator', 'lockbit ransomware', 0.95, 'critical'),
+  p('ransomware', 'family_indicator', 'ryuk infection', 0.95, 'critical'),
+  p('ransomware', 'family_indicator', 'maze ransomware', 0.95, 'critical'),
+  p('ransomware', 'family_indicator', 'revil sodinokibi', 0.95, 'critical'),
+  p('ransomware', 'family_indicator', 'darkside ransomware attack', 0.95, 'critical'),
+  p('ransomware', 'family_indicator', 'conti ransomware', 0.95, 'critical'),
+  p('ransomware', 'family_indicator', 'blackcat ransomware', 0.95, 'critical'),
+  p('ransomware', 'family_indicator', 'clop ransomware', 0.95, 'critical'),
+  p('ransomware', 'family_indicator', 'medusa ransomware', 0.95, 'critical'),
+
+  // -- Social engineering delivery --
+  p('ransomware', 'social_eng', 'urgent security patch attached', 0.85, 'high'),
+  p('ransomware', 'social_eng', 'fbi cybercrime division notice', 0.85, 'high'),
+  p('ransomware', 'social_eng', 'court summons attached document', 0.85, 'high'),
+  p('ransomware', 'social_eng', 'irs tax document attached', 0.80, 'high'),
+  p('ransomware', 'social_eng', 'shipping label attached click', 0.75, 'medium'),
+  p('ransomware', 'social_eng', 'your order confirmation attached', 0.65, 'medium'),
+  p('ransomware', 'social_eng', 'bank statement attached open', 0.70, 'medium'),
+  p('ransomware', 'social_eng', 'hr document requires signature', 0.70, 'medium'),
+  p('ransomware', 'social_eng', 'contract attached please sign', 0.65, 'medium'),
+  p('ransomware', 'social_eng', 'scan result attached click', 0.75, 'medium'),
+  p('ransomware', 'social_eng', 'voicemail attached listen', 0.70, 'medium'),
+  p('ransomware', 'social_eng', 'fax notification attached', 0.70, 'medium'),
+  p('ransomware', 'social_eng', 'shared file click to view', 0.65, 'medium'),
+  p('ransomware', 'social_eng', 'dropbox shared file click', 0.65, 'medium'),
+];
+
+// ═══════════════════════════════════════════════════════════════════════════
+// GROUP 26: FAKE_ANTIVIRUS / SCAREWARE  (50 patterns)
+// Fake security alert pages, rogue AV, browser lockers
+// ═══════════════════════════════════════════════════════════════════════════
+const FAKE_ANTIVIRUS: PatternEntry[] = [
+  // -- Fake virus alerts --
+  p('fake_av', 'fake_alert', 'your pc is infected with virus', 0.95, 'critical'),
+  p('fake_av', 'fake_alert', 'virus detected on your computer', 0.95, 'critical'),
+  p('fake_av', 'fake_alert', 'trojan detected immediately remove', 0.95, 'critical'),
+  p('fake_av', 'fake_alert', 'spyware detected remove now', 0.95, 'critical'),
+  p('fake_av', 'fake_alert', 'malware infection detected', 0.90, 'critical'),
+  p('fake_av', 'fake_alert', 'critical virus alert', 0.90, 'critical'),
+  p('fake_av', 'fake_alert', 'ransomware detected on your pc', 0.90, 'critical'),
+  p('fake_av', 'fake_alert', 'hacker is watching you', 0.85, 'high'),
+  p('fake_av', 'fake_alert', 'your ip has been hacked', 0.85, 'high'),
+  p('fake_av', 'fake_alert', 'identity theft detected', 0.85, 'high'),
+  p('fake_av', 'fake_alert', 'windows security alert virus', 0.95, 'critical'),
+  p('fake_av', 'fake_alert', 'apple security alert virus', 0.95, 'critical'),
+  p('fake_av', 'fake_alert', 'microsoft virus warning', 0.90, 'critical'),
+  p('fake_av', 'fake_alert', 'google security warning virus', 0.90, 'critical'),
+  p('fake_av', 'fake_alert', 'call microsoft support now', 0.95, 'critical'),
+
+  // -- Tech support scam triggers --
+  p('fake_av', 'tech_support', 'call toll free immediately', 0.85, 'high'),
+  p('fake_av', 'tech_support', 'call this number to fix', 0.85, 'high'),
+  p('fake_av', 'tech_support', 'do not restart your computer', 0.90, 'critical'),
+  p('fake_av', 'tech_support', 'do not close this window', 0.85, 'high'),
+  p('fake_av', 'tech_support', 'your computer is locked', 0.90, 'critical'),
+  p('fake_av', 'tech_support', 'your browser has been blocked', 0.90, 'critical'),
+  p('fake_av', 'tech_support', 'windows has been suspended', 0.90, 'critical'),
+  p('fake_av', 'tech_support', 'error code 0x80070', 0.90, 'critical'),
+  p('fake_av', 'tech_support', 'error code ox800xxxx', 0.90, 'critical'),
+  p('fake_av', 'tech_support', 'microsoft error code call', 0.95, 'critical'),
+
+  // -- Rogue AV download lures --
+  p('fake_av', 'rogue_av', 'free virus scan download', 0.80, 'high'),
+  p('fake_av', 'rogue_av', 'download free antivirus now', 0.75, 'medium'),
+  p('fake_av', 'rogue_av', 'best free malware remover', 0.70, 'medium'),
+  p('fake_av', 'rogue_av', 'remove virus free tool', 0.75, 'medium'),
+  p('fake_av', 'rogue_av', 'pc cleaner download free', 0.75, 'medium'),
+  p('fake_av', 'rogue_av', 'registry cleaner download', 0.70, 'medium'),
+  p('fake_av', 'rogue_av', 'junk cleaner download', 0.65, 'medium'),
+  p('fake_av', 'rogue_av', 'system optimizer download free', 0.65, 'medium'),
+  p('fake_av', 'rogue_av', 'scan complete threats found', 0.85, 'high'),
+  p('fake_av', 'rogue_av', 'your scan results threats', 0.80, 'high'),
+  p('fake_av', 'rogue_av', 'fix all issues automatically', 0.75, 'medium'),
+
+  // -- Browser locker patterns --
+  p('fake_av', 'browser_locker', 'your browser is locked', 0.90, 'critical'),
+  p('fake_av', 'browser_locker', 'access to device is blocked', 0.85, 'high'),
+  p('fake_av', 'browser_locker', 'illegal activity detected on pc', 0.90, 'critical'),
+  p('fake_av', 'browser_locker', 'fbi warning your computer blocked', 0.90, 'critical'),
+  p('fake_av', 'browser_locker', 'police cybercrime unit warning', 0.90, 'critical'),
+  p('fake_av', 'browser_locker', 'your ip has been blocked', 0.85, 'high'),
+  p('fake_av', 'browser_locker', 'pay fine to unlock computer', 0.90, 'critical'),
+  p('fake_av', 'browser_locker', 'pay penalty to restore access', 0.90, 'critical'),
+  p('fake_av', 'browser_locker', 'copyright violation detected', 0.80, 'high'),
+  p('fake_av', 'browser_locker', 'child pornography detected warning', 0.95, 'critical'),
+  p('fake_av', 'browser_locker', 'press f1 for tech support', 0.80, 'high'),
+  p('fake_av', 'browser_locker', 'press ok to remove virus', 0.80, 'high'),
+  p('fake_av', 'browser_locker', 'this page is dangerous', 0.65, 'medium'),
+];
+
+// ═══════════════════════════════════════════════════════════════════════════
+// GROUP 27: CREDENTIAL_STEALER  (50 patterns)
+// Info-stealer delivery, form-jacking, browser extension abuse
+// ═══════════════════════════════════════════════════════════════════════════
+const CREDENTIAL_STEALER: PatternEntry[] = [
+  // -- Fake login / credential harvest --
+  p('cred_steal', 'fake_login', 'your account has been suspended', 0.80, 'high'),
+  p('cred_steal', 'fake_login', 'verify your account to continue', 0.80, 'high'),
+  p('cred_steal', 'fake_login', 'confirm your identity below', 0.80, 'high'),
+  p('cred_steal', 'fake_login', 'enter your password to verify', 0.85, 'high'),
+  p('cred_steal', 'fake_login', 'login to verify your identity', 0.80, 'high'),
+  p('cred_steal', 'fake_login', 're-enter your credentials', 0.80, 'high'),
+  p('cred_steal', 'fake_login', 'sign in with google to continue', 0.70, 'medium'),
+  p('cred_steal', 'fake_login', 'two factor verification required', 0.65, 'medium'),
+  p('cred_steal', 'fake_login', 'enter otp to verify', 0.65, 'medium'),
+  p('cred_steal', 'fake_login', 'google login required to view', 0.75, 'medium'),
+
+  // -- Stealer payload indicators --
+  p('cred_steal', 'stealer_payload', 'redline stealer', 0.95, 'critical'),
+  p('cred_steal', 'stealer_payload', 'raccoon stealer', 0.95, 'critical'),
+  p('cred_steal', 'stealer_payload', 'azorult stealer', 0.95, 'critical'),
+  p('cred_steal', 'stealer_payload', 'vidar stealer', 0.95, 'critical'),
+  p('cred_steal', 'stealer_payload', 'formbook stealer', 0.95, 'critical'),
+  p('cred_steal', 'stealer_payload', 'agent tesla stealer', 0.95, 'critical'),
+  p('cred_steal', 'stealer_payload', 'lokibot stealer', 0.95, 'critical'),
+  p('cred_steal', 'stealer_payload', 'trickbot banker', 0.95, 'critical'),
+  p('cred_steal', 'stealer_payload', 'emotet loader', 0.95, 'critical'),
+  p('cred_steal', 'stealer_payload', 'qakbot infection', 0.95, 'critical'),
+  p('cred_steal', 'stealer_payload', 'icedid banker', 0.95, 'critical'),
+  p('cred_steal', 'stealer_payload', 'dridex banker', 0.95, 'critical'),
+
+  // -- Social engineering credential theft --
+  p('cred_steal', 'social_eng', 'update your payment details', 0.80, 'high'),
+  p('cred_steal', 'social_eng', 'confirm billing information', 0.75, 'medium'),
+  p('cred_steal', 'social_eng', 'card declined update now', 0.80, 'high'),
+  p('cred_steal', 'social_eng', 'unusual sign in attempt', 0.75, 'medium'),
+  p('cred_steal', 'social_eng', 'someone tried to access your account', 0.75, 'medium'),
+  p('cred_steal', 'social_eng', 'suspicious login from new device', 0.75, 'medium'),
+  p('cred_steal', 'social_eng', 'password reset required immediately', 0.80, 'high'),
+  p('cred_steal', 'social_eng', 'account recovery verify now', 0.80, 'high'),
+  p('cred_steal', 'social_eng', 'locked out of account verify', 0.80, 'high'),
+  p('cred_steal', 'social_eng', 'security code verify identity', 0.75, 'medium'),
+
+  // -- Browser extension abuse --
+  p('cred_steal', 'browser_ext', 'add extension to access content', 0.85, 'high'),
+  p('cred_steal', 'browser_ext', 'install chrome extension to proceed', 0.85, 'high'),
+  p('cred_steal', 'browser_ext', 'extension required to view page', 0.85, 'high'),
+  p('cred_steal', 'browser_ext', 'add to chrome unlock content', 0.80, 'high'),
+  p('cred_steal', 'browser_ext', 'download browser extension', 0.75, 'medium'),
+  p('cred_steal', 'browser_ext', 'chrome extension download free', 0.70, 'medium'),
+  p('cred_steal', 'browser_ext', 'add extension for better experience', 0.65, 'medium'),
+
+  // -- Form-jacking / data theft indicators --
+  p('cred_steal', 'formjack', 'enter card number to verify', 0.85, 'high'),
+  p('cred_steal', 'formjack', 'confirm credit card details', 0.85, 'high'),
+  p('cred_steal', 'formjack', 'enter ssn to verify identity', 0.90, 'critical'),
+  p('cred_steal', 'formjack', 'social security number required', 0.85, 'high'),
+  p('cred_steal', 'formjack', 'enter cvv code to verify', 0.85, 'high'),
+  p('cred_steal', 'formjack', 'enter bank routing number', 0.85, 'high'),
+  p('cred_steal', 'formjack', 'enter account pin to confirm', 0.85, 'high'),
+  p('cred_steal', 'formjack', 'submit full card details', 0.90, 'critical'),
+  p('cred_steal', 'formjack', 'billing address and card', 0.70, 'medium'),
+  p('cred_steal', 'formjack', 'mother maiden name security', 0.80, 'high'),
+  p('cred_steal', 'formjack', 'date of birth verification', 0.65, 'medium'),
+];
+
+// ═══════════════════════════════════════════════════════════════════════════
+// GROUP 28: URL_MALWARE_PATTERNS  (60 patterns)
+// URL path/param patterns specific to malware delivery and phishing
+// ═══════════════════════════════════════════════════════════════════════════
+const URL_MALWARE_PATTERNS: PatternEntry[] = [
+  // -- Malicious URL path components --
+  p('url_malware', 'path_pattern', '/download/setup.exe', 0.85, 'high'),
+  p('url_malware', 'path_pattern', '/files/payload', 0.80, 'high'),
+  p('url_malware', 'path_pattern', '/wp-content/uploads/malware', 0.80, 'high'),
+  p('url_malware', 'path_pattern', '/gate.php', 0.80, 'high'),
+  p('url_malware', 'path_pattern', '/panel/gate', 0.80, 'high'),
+  p('url_malware', 'path_pattern', '/c2/beacon', 0.90, 'critical'),
+  p('url_malware', 'path_pattern', '/rat/connect', 0.90, 'critical'),
+  p('url_malware', 'path_pattern', '/bot/check', 0.85, 'high'),
+  p('url_malware', 'path_pattern', '/loader/payload', 0.85, 'high'),
+  p('url_malware', 'path_pattern', '/drop/download', 0.85, 'high'),
+
+  // -- Exploit kit landing pages --
+  p('url_malware', 'exploit_kit', 'rig exploit kit', 0.95, 'critical'),
+  p('url_malware', 'exploit_kit', 'fallout exploit kit', 0.95, 'critical'),
+  p('url_malware', 'exploit_kit', 'magnitude exploit kit', 0.95, 'critical'),
+  p('url_malware', 'exploit_kit', 'purple fox exploit', 0.95, 'critical'),
+  p('url_malware', 'exploit_kit', 'angler exploit kit', 0.95, 'critical'),
+  p('url_malware', 'exploit_kit', 'nuclear exploit kit', 0.95, 'critical'),
+  p('url_malware', 'exploit_kit', 'neutrino exploit kit', 0.95, 'critical'),
+  p('url_malware', 'exploit_kit', 'drive by exploit landing', 0.90, 'critical'),
+  p('url_malware', 'exploit_kit', 'cve exploit payload', 0.85, 'high'),
+  p('url_malware', 'exploit_kit', 'zero day exploit download', 0.90, 'critical'),
+
+  // -- Malware C2 / beacon patterns --
+  p('url_malware', 'c2_pattern', 'cobalt strike beacon', 0.95, 'critical'),
+  p('url_malware', 'c2_pattern', 'metasploit payload', 0.90, 'critical'),
+  p('url_malware', 'c2_pattern', 'meterpreter session', 0.90, 'critical'),
+  p('url_malware', 'c2_pattern', 'reverse shell connect', 0.90, 'critical'),
+  p('url_malware', 'c2_pattern', 'netcat listener', 0.85, 'high'),
+  p('url_malware', 'c2_pattern', 'command and control server', 0.90, 'critical'),
+  p('url_malware', 'c2_pattern', 'c2 server callback', 0.90, 'critical'),
+  p('url_malware', 'c2_pattern', 'botnet command server', 0.90, 'critical'),
+  p('url_malware', 'c2_pattern', 'rat remote access trojan', 0.90, 'critical'),
+  p('url_malware', 'c2_pattern', 'keylogger activity detected', 0.85, 'high'),
+
+  // -- Spam / phishing URL indicators --
+  p('url_malware', 'phish_url', 'login-verify.', 0.85, 'high'),
+  p('url_malware', 'phish_url', 'account-confirm.', 0.85, 'high'),
+  p('url_malware', 'phish_url', 'secure-update.', 0.85, 'high'),
+  p('url_malware', 'phish_url', 'verify-account.', 0.85, 'high'),
+  p('url_malware', 'phish_url', 'signin-page.', 0.85, 'high'),
+  p('url_malware', 'phish_url', 'account-suspended.', 0.85, 'high'),
+  p('url_malware', 'phish_url', 'password-reset.', 0.80, 'high'),
+  p('url_malware', 'phish_url', 'billing-update.', 0.80, 'high'),
+  p('url_malware', 'phish_url', 'payment-confirm.', 0.80, 'high'),
+  p('url_malware', 'phish_url', 'prize-claim.', 0.85, 'high'),
+
+  // -- Redirect chain / obfuscation indicators --
+  p('url_malware', 'redirect_chain', 'click tracking redirect', 0.65, 'medium'),
+  p('url_malware', 'redirect_chain', 'url redirect exploit', 0.80, 'high'),
+  p('url_malware', 'redirect_chain', 'open redirect vulnerability', 0.80, 'high'),
+  p('url_malware', 'redirect_chain', 'malicious redirect chain', 0.85, 'high'),
+  p('url_malware', 'redirect_chain', 'cloaked landing page', 0.80, 'high'),
+  p('url_malware', 'redirect_chain', 'seo cloaking technique', 0.75, 'medium'),
+  p('url_malware', 'redirect_chain', 'javascript redirect malware', 0.80, 'high'),
+  p('url_malware', 'redirect_chain', 'iframe injection redirect', 0.80, 'high'),
+  p('url_malware', 'redirect_chain', 'malicious javascript code', 0.80, 'high'),
+  p('url_malware', 'redirect_chain', 'script injection detected', 0.80, 'high'),
+
+  // -- Compromised/hacked website indicators --
+  p('url_malware', 'hacked_site', 'wp-includes/malware', 0.85, 'high'),
+  p('url_malware', 'hacked_site', 'wp-admin/gate.php', 0.85, 'high'),
+  p('url_malware', 'hacked_site', 'hacked website malware', 0.85, 'high'),
+  p('url_malware', 'hacked_site', 'compromised site phishing', 0.80, 'high'),
+  p('url_malware', 'hacked_site', 'watering hole attack', 0.85, 'high'),
+  p('url_malware', 'hacked_site', 'malicious code injected', 0.85, 'high'),
+  p('url_malware', 'hacked_site', 'cross site scripting xss', 0.80, 'high'),
+  p('url_malware', 'hacked_site', 'sql injection attack', 0.80, 'high'),
+  p('url_malware', 'hacked_site', 'file inclusion exploit', 0.80, 'high'),
+  p('url_malware', 'hacked_site', 'remote code execution exploit', 0.85, 'high'),
+];
+
+// ═══════════════════════════════════════════════════════════════════════════
 // ASSEMBLED MASTER PATTERNS
 // ═══════════════════════════════════════════════════════════════════════════
 
@@ -1717,6 +2062,12 @@ export const MASTER_PATTERNS: PatternEntry[] = [
   ...SOCIAL_ENGINEERING_WEB,
   ...ROMANCE_WEBSITE,
   ...FINANCIAL_FRAUD_WEB,
+  // New malware/virus/URL threat groups
+  ...MALWARE_DISTRIBUTION,
+  ...RANSOMWARE_DELIVERY,
+  ...FAKE_ANTIVIRUS,
+  ...CREDENTIAL_STEALER,
+  ...URL_MALWARE_PATTERNS,
 ];
 
 // ---------------------------------------------------------------------------

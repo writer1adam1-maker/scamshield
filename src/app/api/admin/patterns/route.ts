@@ -163,7 +163,13 @@ export async function POST(req: NextRequest) {
 }
 
 // ---------------------------------------------------------------------------
+// Severity ranking for upgrade comparison
+// ---------------------------------------------------------------------------
+const SEVERITY_RANK: Record<string, number> = { low: 1, medium: 2, high: 3, critical: 4 };
+
+// ---------------------------------------------------------------------------
 // PUT — Approve patterns (admin selects from extracted, confirms to save)
+// Deduplicates, detects upgrades (higher weight/severity replaces old entry)
 // ---------------------------------------------------------------------------
 
 export async function PUT(req: NextRequest) {
@@ -183,18 +189,57 @@ export async function PUT(req: NextRequest) {
     const incoming = body.patterns as ExtractedPattern[];
     const existing = await readPatterns();
 
-    // Deduplicate by text (case-insensitive)
-    const existingTexts = new Set(existing.map((p) => p.text.toLowerCase()));
-    const newPatterns = incoming.filter((p) => !existingTexts.has(p.text.toLowerCase()));
+    // Build a map of existing patterns by lowercase text for O(1) lookup
+    const existingMap = new Map<string, { index: number; pattern: ExtractedPattern }>();
+    existing.forEach((p, i) => existingMap.set(p.text.toLowerCase(), { index: i, pattern: p }));
 
-    const merged = [...existing, ...newPatterns];
+    let added = 0;
+    let duplicatesSkipped = 0;
+    let upgraded = 0;
+
+    const merged = [...existing];
+
+    for (const incoming_p of incoming) {
+      const key = incoming_p.text.toLowerCase();
+      const existing_entry = existingMap.get(key);
+
+      if (!existing_entry) {
+        // Brand new pattern — add it
+        merged.push(incoming_p);
+        existingMap.set(key, { index: merged.length - 1, pattern: incoming_p });
+        added++;
+      } else {
+        // Pattern exists — check if incoming is an upgrade
+        const existingRank = SEVERITY_RANK[existing_entry.pattern.suggestedSeverity] ?? 0;
+        const incomingRank = SEVERITY_RANK[incoming_p.suggestedSeverity] ?? 0;
+        const weightImproved = incoming_p.suggestedWeight > existing_entry.pattern.suggestedWeight;
+        const severityImproved = incomingRank > existingRank;
+
+        if (weightImproved || severityImproved) {
+          // Upgrade: keep the better version
+          merged[existing_entry.index] = {
+            ...existing_entry.pattern,
+            suggestedWeight: Math.max(existing_entry.pattern.suggestedWeight, incoming_p.suggestedWeight),
+            suggestedSeverity: incomingRank >= existingRank
+              ? incoming_p.suggestedSeverity
+              : existing_entry.pattern.suggestedSeverity,
+            specificityScore: Math.max(existing_entry.pattern.specificityScore, incoming_p.specificityScore),
+          };
+          upgraded++;
+        } else {
+          duplicatesSkipped++;
+        }
+      }
+    }
+
     await writePatterns(merged);
 
     return NextResponse.json({
       success: true,
-      added: newPatterns.length,
+      added,
+      upgraded,
+      duplicatesSkipped,
       total: merged.length,
-      duplicatesSkipped: incoming.length - newPatterns.length,
     });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Unknown error";

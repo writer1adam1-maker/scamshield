@@ -462,6 +462,49 @@ const PAYMENT_METHOD_PATTERNS: Array<{ pattern: RegExp; label: string; weight: n
 ];
 
 // ---------------------------------------------------------------------------
+// Malware / virus / drive-by download text patterns
+// ---------------------------------------------------------------------------
+const MALWARE_TEXT_PATTERNS: Array<{ pattern: RegExp; label: string; weight: number }> = [
+  // Malware download triggers
+  { pattern: /\b(enable\s+(macros?|content|editing)\s+(to|and)\s+(view|open|access|read))\b/i, label: 'malware_enable_macros', weight: 0.92 },
+  { pattern: /\b(disable\s+(your\s+)?(antivirus|windows\s+defender|firewall|security))\b/i, label: 'malware_disable_av', weight: 0.95 },
+  { pattern: /\b(add\s+to\s+(exceptions?|exclusions?|whitelist))\b/i, label: 'malware_add_exception', weight: 0.80 },
+  { pattern: /\b(antivirus\s+(will|may)\s+(flag|detect|block|quarantine))\b/i, label: 'malware_av_flag_warning', weight: 0.88 },
+  { pattern: /\b(false\s+positive.{0,30}(ignore|allow|bypass))\b/i, label: 'malware_false_positive_claim', weight: 0.85 },
+  { pattern: /\b(install\s+(codec|plugin|player|flash|java)\s+(to|and)\s+(view|watch|play|access))\b/i, label: 'malware_fake_plugin', weight: 0.88 },
+  { pattern: /\b(click\s+(allow|yes|ok|enable)\s+to\s+(prove|confirm|verify)\s+(you\s+are|you're)\s+not\s+a\s+robot)\b/i, label: 'malware_pushnotif_trick', weight: 0.90 },
+  { pattern: /\b(press\s+allow\s+to\s+(continue|watch|access|proceed))\b/i, label: 'malware_allow_press', weight: 0.88 },
+
+  // Ransomware indicators
+  { pattern: /\b(your\s+(files?|data|documents?)\s+(have\s+been|are)\s+(encrypted|locked|seized))\b/i, label: 'ransomware_files_encrypted', weight: 0.98 },
+  { pattern: /\b(pay\s+(to\s+)?(decrypt|restore|recover|unlock)\s+(your\s+)?(files?|data|documents?))\b/i, label: 'ransomware_pay_demand', weight: 0.97 },
+  { pattern: /\b(decryption\s+key\s+(will\s+be|available|provided))\b/i, label: 'ransomware_decryption_key', weight: 0.95 },
+  { pattern: /\b(bitcoin\s+(payment|address|wallet)\s+to\s+(restore|decrypt|unlock))\b/i, label: 'ransomware_bitcoin_payment', weight: 0.97 },
+  { pattern: /\b(do\s+not\s+(rename|delete|move)\s+(encrypted|locked)\s+files?)\b/i, label: 'ransomware_dont_rename', weight: 0.92 },
+  { pattern: /\b(price\s+(doubles?|increases?)\s+(every|after)\s+\d+\s+(hours?|days?))\b/i, label: 'ransomware_price_increase', weight: 0.95 },
+  { pattern: /\b(wannacry|locky|cerber|petya|notpetya|lockbit|ryuk|maze|revil|sodinokibi|conti|blackcat|darkside)\b/i, label: 'ransomware_family_name', weight: 0.95 },
+
+  // Fake virus / scareware
+  { pattern: /\b(your\s+(computer|pc|device|system)\s+(is\s+)?(infected|compromised|hacked|at\s+risk))\b/i, label: 'scareware_infection_claim', weight: 0.88 },
+  { pattern: /\b((trojan|virus|malware|spyware|ransomware)\s+(detected|found|identified)\s+(on\s+your)?\s*(computer|pc|device|system))\b/i, label: 'scareware_threat_detected', weight: 0.90 },
+  { pattern: /\b(call\s+(toll[- ]free|microsoft|apple|google|support)\s+(immediately|now|asap))\b/i, label: 'scareware_call_support', weight: 0.92 },
+  { pattern: /\b(do\s+not\s+(close|shut\s+down|restart)\s+(this\s+)?(window|computer|page|browser))\b/i, label: 'scareware_dont_close', weight: 0.88 },
+  { pattern: /\b(your\s+(browser|computer|device)\s+(is\s+)?(locked|blocked|suspended|compromised))\b/i, label: 'scareware_device_locked', weight: 0.90 },
+  { pattern: /\b(error\s+code\s*[:\s]*0x[0-9a-fA-F]{4,8})\b/i, label: 'scareware_fake_error_code', weight: 0.88 },
+
+  // Credential / info stealing
+  { pattern: /\b(redline|raccoon|azorult|vidar|formbook|agent\s+tesla|lokibot)\b/i, label: 'infostealer_family_name', weight: 0.95 },
+  { pattern: /\b(cobalt\s+strike|metasploit|meterpreter|mimikatz)\b/i, label: 'pentest_tool_malicious_context', weight: 0.90 },
+  { pattern: /\b(keylogger|screen\s*grab(ber)?|clipboard\s*(stealer|hijack))\b/i, label: 'stealer_capability', weight: 0.90 },
+  { pattern: /\b(stolen\s+credentials?|leaked\s+passwords?|credential\s+(dump|leak|theft))\b/i, label: 'credential_theft', weight: 0.88 },
+  { pattern: /\b(browser\s+(cookie|session)\s+(steal|theft|hijack))\b/i, label: 'session_hijack', weight: 0.90 },
+
+  // Malvertising / SEO poisoning
+  { pattern: /\b(watering\s+hole\s+attack|drive[- ]by\s+download|malvertis(e|ing))\b/i, label: 'malvertising_term', weight: 0.88 },
+  { pattern: /\b(seo\s+(poisoning|hijacking|spam))\b/i, label: 'seo_poisoning_term', weight: 0.85 },
+];
+
+// ---------------------------------------------------------------------------
 // Shannon entropy calculator
 // ---------------------------------------------------------------------------
 function shannonEntropy(str: string): number {
@@ -749,6 +792,101 @@ export function extractUrlSignals(url: string): Signal[] {
     });
   }
 
+  // 14) Malicious file extension in URL path (direct malware download link)
+  const maliciousExtensions = /\.(exe|bat|cmd|vbs|vbe|js|jse|wsf|wsh|msi|ps1|ps2|scr|pif|com|hta|dll|lnk|reg|msc|cpl|jar|swf|cab|iso|img)(\?|$)/i;
+  const pathMatch = maliciousExtensions.exec(parsed.pathname + parsed.search);
+  if (pathMatch) {
+    const ext = pathMatch[1].toLowerCase();
+    const highRiskExts = new Set(['exe', 'bat', 'cmd', 'vbs', 'ps1', 'hta', 'scr', 'pif', 'lnk']);
+    const conf = highRiskExts.has(ext) ? 0.85 : 0.65;
+    signals.push({
+      type: SignalType.URL,
+      value: parsed.pathname,
+      confidence: conf,
+      rawData: { check: 'malicious_file_ext', ext, analysis },
+      label: `URL points to potentially malicious file type: .${ext}`,
+      cost: 0,
+    });
+  }
+
+  // 15) Malware C2 / payload path patterns
+  const malwarePathPattern = /(\/gate\.php|\/panel\/(gate|upload|connect)|\/bot\/(check|tasks?|gate)|\/c2\/|\/rat\/|\/drop\/|\/loader\/|\/payload\b|\/beacon\b|\/stager\b|\/implant\b)/i;
+  if (malwarePathPattern.test(parsed.pathname)) {
+    signals.push({
+      type: SignalType.URL,
+      value: parsed.pathname,
+      confidence: 0.85,
+      rawData: { check: 'malware_c2_path', analysis },
+      label: `URL path matches known malware C2/payload pattern: ${parsed.pathname}`,
+      cost: 0,
+    });
+  }
+
+  // 16) Exploit kit / drive-by landing page patterns
+  const exploitKitPattern = /\/(rig|fallout|magnitude|purple.?fox|angler|nuclear|neutrino|ek|exploit.?kit)\//i;
+  if (exploitKitPattern.test(parsed.pathname)) {
+    signals.push({
+      type: SignalType.URL,
+      value: parsed.pathname,
+      confidence: 0.90,
+      rawData: { check: 'exploit_kit_path', analysis },
+      label: `URL path matches known exploit kit pattern: ${parsed.pathname}`,
+      cost: 0,
+    });
+  }
+
+  // 17) Phishing kit path — known credential capture endpoints
+  const phishingKitPaths = /\/(webscr|login\.php|signin\.php|auth\.php|verify\.php|confirm\.php|update\.php|secure\.php|account\.php|billing\.php|checkout\.php)/i;
+  if (phishingKitPaths.test(parsed.pathname)) {
+    signals.push({
+      type: SignalType.URL,
+      value: parsed.pathname,
+      confidence: 0.75,
+      rawData: { check: 'phishing_kit_path', analysis },
+      label: `URL path matches known phishing kit endpoint: ${parsed.pathname}`,
+      cost: 0,
+    });
+  }
+
+  // 18) Suspicious keyword stuffing in domain (SEO poisoning / fake brand pages)
+  const domainKeywordStuffing = /(security|secure|verify|update|login|signin|account|support|help|free|official|bank|paypal|amazon|microsoft|google|apple|netflix|bitcoin|crypto|wallet|reward|prize|claim|win|lucky)([-.])(security|secure|verify|update|login|signin|account|support|help|official|bank|bitcoin|crypto|wallet|reward|prize)/i;
+  if (domainKeywordStuffing.test(hostname)) {
+    signals.push({
+      type: SignalType.URL,
+      value: hostname,
+      confidence: 0.80,
+      rawData: { check: 'domain_keyword_stuffing', analysis },
+      label: `Domain contains suspicious keyword combination: ${hostname}`,
+      cost: 0,
+    });
+  }
+
+  // 19) Double extension trick (file.pdf.exe, doc.docx.zip etc.)
+  const doubleExtensionPattern = /\.(pdf|doc|docx|xls|xlsx|txt|jpg|png|zip)\.(exe|bat|cmd|vbs|scr|pif|com|js|msi)/i;
+  if (doubleExtensionPattern.test(parsed.pathname)) {
+    signals.push({
+      type: SignalType.URL,
+      value: parsed.pathname,
+      confidence: 0.90,
+      rawData: { check: 'double_extension', analysis },
+      label: `Double file extension trick detected (e.g. file.pdf.exe): ${parsed.pathname}`,
+      cost: 0,
+    });
+  }
+
+  // 20) Newly registered domain indicators (very long random-looking SLD + free TLD)
+  const sld = parts.length >= 2 ? parts[parts.length - 2] : '';
+  if (sld.length > 18 && /[0-9]/.test(sld) && SUSPICIOUS_TLDS.has(tld)) {
+    signals.push({
+      type: SignalType.URL,
+      value: hostname,
+      confidence: 0.70,
+      rawData: { check: 'random_long_sld', sldLength: sld.length, analysis },
+      label: `Long random-looking domain on suspicious TLD (likely newly registered): ${hostname}`,
+      cost: 0,
+    });
+  }
+
   return signals;
 }
 
@@ -767,6 +905,7 @@ export function extractTextSignals(text: string): Signal[] {
     { group: 'payment_method', patterns: PAYMENT_METHOD_PATTERNS },
     { group: 'qr_code', patterns: QR_CODE_PATTERNS },
     { group: 'social_media', patterns: SOCIAL_MEDIA_PATTERNS },
+    { group: 'malware', patterns: MALWARE_TEXT_PATTERNS },
   ];
 
   for (const { group, patterns } of allPatternGroups) {
@@ -1514,6 +1653,7 @@ export {
   TOO_GOOD_PATTERNS,
   THREAT_PATTERNS,
   PAYMENT_METHOD_PATTERNS,
+  MALWARE_TEXT_PATTERNS,
   BRAND_DOMAINS,
   URL_SHORTENERS,
   URL_SHORTENERS_HIGH_ABUSE,
