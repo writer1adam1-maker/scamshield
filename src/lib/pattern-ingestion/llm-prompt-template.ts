@@ -11,165 +11,109 @@ import type { ExtractedPattern } from "./pattern-extractor";
 // Includes a timestamp so each call generates fresh, unique results
 // ---------------------------------------------------------------------------
 
-export function buildLlmExtractionPrompt(): string {
+export function buildLlmExtractionPrompt(fraudText?: string): string {
   const now = new Date();
   const sessionId = `SS-${now.getFullYear()}${String(now.getMonth()+1).padStart(2,'0')}${String(now.getDate()).padStart(2,'0')}-${Math.random().toString(36).slice(2,8).toUpperCase()}`;
-  const timestamp = now.toISOString();
 
-  return `// SESSION: ${sessionId} | GENERATED: ${timestamp}
-// ScamShield Pattern Extraction — Deep Analysis Protocol v2
-// ============================================================
-// Each session ID is unique. Run this prompt again on the same data
-// to get fresh perspective angles and previously missed patterns.
+  const textBlock = fraudText?.trim()
+    ? fraudText.trim()
+    : `[PASTE THE FRAUD REPORT, PHISHING EMAIL, SCAM MESSAGE, OR THREAT INTEL TEXT HERE — then send this entire message]`;
 
-You are ScamShield's elite threat intelligence analyst — a specialist in:
-- Phishing, smishing, vishing, and spear-phishing campaigns
-- Malware distribution, drive-by downloads, and exploit delivery
-- Ransomware, RAT, spyware, and trojan dropper campaigns
-- Financial fraud: wire transfer, crypto theft, invoice fraud, BEC
-- Social engineering: romance, pig butchering, advance fee, lottery
-- Website scams: fake tech support, fake antivirus, scare pages
-- URL obfuscation, domain squatting, typosquatting, IDN homoglyphs
-- Government, bank, and brand impersonation
-- SEO poisoning and malvertising patterns
+  return `You are a threat intelligence analyst for ScamShield, an AI-powered fraud detection system. Your job is to extract detection patterns from fraud/scam/malware text so they can be added to a real-time scam detector used by thousands of people.
 
-YOUR MISSION:
-Perform a deep forensic extraction of scam/fraud/malware patterns from the provided text.
-Think like a threat hunter reading adversarial content for the first time.
-Extract every unique phrase, term, pattern, or signal that would help an automated system
-detect similar attacks in the wild. Be thorough. Most LLMs miss 40–60% of patterns on
-first pass — you must find what others miss.
+Analysis session: ${sessionId} — ${now.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
 
-═══════════════════════════════════════════════════════════════
-STEP-BY-STEP ANALYSIS (do this mentally before outputting JSON):
-═══════════════════════════════════════════════════════════════
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+YOUR TASK
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-STEP 1 — READ THROUGH ONCE: Understand the attack type, target, and delivery mechanism.
+Read the fraud text below and extract every short phrase (2–7 words) that a scam detection system could use to flag similar attacks in the future. Think like a forensic analyst: what specific language does this attacker use that other scammers also use? What phrases would betray this scam if it landed in someone's inbox?
 
-STEP 2 — EXTRACT LINGUISTIC PATTERNS:
-  - Urgency/pressure phrases (deadlines, threats, countdown)
-  - Trust-building phrases (authority claims, official-sounding language)
-  - Action demand phrases (what they want the victim to do)
-  - Fear induction phrases (consequences of inaction)
-  - Reward/incentive phrases (too-good-to-be-true offers)
-  - Isolation tactics ("tell no one", "confidential")
+Before writing any output, mentally go through these 6 lenses:
 
-STEP 3 — EXTRACT TECHNICAL INDICATORS:
-  - URL patterns (suspicious path components, parameter names)
-  - Domain tricks (look-alike domains, keyword stuffing)
-  - File attachment indicators (malicious file types, names)
-  - Redirect chain keywords (tracking pixels, cloaking terms)
-  - Malware delivery phrases (download triggers, install prompts)
-  - Exploit references (vulnerability language, "security update" pretexts)
+1. URGENCY — What time pressure or threat language is used?
+2. AUTHORITY — What fake official or brand identity is claimed?
+3. ACTION — What specific action does the attacker want the victim to take?
+4. PAYMENT — What payment method or financial transfer is requested?
+5. TECHNICAL — Are there URL tricks, file names, or technical pretexts?
+6. WHAT DID I MISS? — Re-read for any pattern you haven't captured yet.
 
-STEP 4 — EXTRACT SOCIAL ENGINEERING SIGNALS:
-  - Identity claim patterns (who the scammer pretends to be)
-  - Relationship-building phrases (romance, trust, insider knowledge)
-  - Pretext narratives (why they're contacting the victim)
-  - Legitimacy props (invoice numbers, case IDs, tracking numbers)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+CATEGORIES — pick the most specific one per pattern:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-STEP 5 — EXTRACT FINANCIAL/TRANSACTION SIGNALS:
-  - Payment method requests (crypto, gift cards, wire)
-  - Fee justifications ("processing fee", "customs clearance")
-  - Account compromise pretexts
-  - Investment opportunity language
+URGENCY                  — deadlines, threats, countdown, "act now"
+FINANCIAL                — payment, wire, invoice, fees, gift cards
+ROMANCE                  — love bombing, trust building, pig butchering setup
+PHISHING                 — fake login, credential harvest, account verify
+CRYPTO_INVESTMENT        — guaranteed returns, fake platforms, pig butchering
+GOVERNMENT_IMPERSONATION — IRS, FBI, SSA, HMRC, ATO, law enforcement
+TECH_SUPPORT             — fake virus, remote access, fake Microsoft/Apple
+PACKAGE_DELIVERY         — fake DHL/FedEx/USPS, customs fee, tracking
+LOTTERY_PRIZE            — fake winnings, advance fee, prize claim
+EMPLOYMENT               — fake job, reshipping mule, money mule recruitment
+MALWARE_DISTRIBUTION     — download triggers, fake software, trojan delivery
+DRIVE_BY_DOWNLOAD        — silent install pretexts, "click to view" traps
+RANSOMWARE_DELIVERY      — fake invoices with macros, file encryption threats
+EXPLOIT_KIT              — fake plugin/update prompts, vulnerability pretexts
+SPYWARE_STALKERWARE      — monitoring app, keylogger, RAT delivery
+FAKE_ANTIVIRUS           — scareware, fake security alert, rogue AV
+MALVERTISING             — ad redirect, malicious popup, "you've been selected"
+CREDENTIAL_STEALER       — info-stealer, browser hijack, form grabbing
+BOTNET_C2                — bot recruitment, zombie network, DDoS-for-hire
+URL_OBFUSCATION          — encoded URLs, redirect chains, link shortener abuse
+DOMAIN_SQUATTING         — typosquat, homoglyph, brand look-alike domain
+SEO_POISONING            — fake search results, cloaked pages
+SOCIAL_ENGINEERING       — manipulation not covered above
+BRAND_IMPERSONATION      — fake brand page, logo abuse, look-alike design
+GENERIC                  — use only if nothing else fits
 
-STEP 6 — LOOK FOR WHAT YOU MISSED:
-  Re-read and find patterns that are specific to THIS attack that you
-  haven't seen in standard training data. Rare or novel patterns are
-  the most valuable — weight them HIGH.
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+SEVERITY & WEIGHT GUIDE:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-═══════════════════════════════════════════════════════════════
-CATEGORIES (REQUIRED — pick the most specific one):
-═══════════════════════════════════════════════════════════════
+"low"      weight 1–8   — also appears in legitimate content (e.g., "your account")
+"medium"   weight 9–15  — somewhat specific to scams (e.g., "verify your identity now")
+"high"     weight 16–22 — rarely in legitimate messages (e.g., "gift card payment required")
+"critical" weight 23–30 — almost exclusively in scams (e.g., "send bitcoin to wallet address")
 
-SCAM MESSAGE CATEGORIES:
-- URGENCY — time pressure, deadlines, threats of account closure or legal action
-- FINANCIAL — payment requests, wire transfers, fees, gift cards, invoice fraud
-- ROMANCE — love bombing, emotional manipulation, pig butchering setup
-- PHISHING — credential harvesting, fake login pages, account verification
-- CRYPTO_INVESTMENT — guaranteed returns, fake exchanges, pig butchering phase 2
-- GOVERNMENT_IMPERSONATION — IRS, SSA, FBI, HMRC, ATO, law enforcement impersonation
-- TECH_SUPPORT — fake virus alerts, remote access requests, fake Microsoft/Apple
-- PACKAGE_DELIVERY — fake DHL/FedEx/USPS/customs notifications, reshipping
-- LOTTERY_PRIZE — fake winnings, prize claims, advance fee
-- EMPLOYMENT — fake job offers, reshipping mule, money mule recruitment
+specificityScore: 0.0 = common in normal text, 1.0 = only ever seen in scam/fraud content
 
-MALWARE & WEB THREAT CATEGORIES:
-- MALWARE_DISTRIBUTION — phrases used to trick users into downloading malware
-- DRIVE_BY_DOWNLOAD — page elements/text that precede silent drive-by installs
-- RANSOMWARE_DELIVERY — ransomware pretexts, fake invoices with macros, dropper language
-- EXPLOIT_KIT — exploit delivery language, fake plugin prompts, CVE exploitation pretexts
-- SPYWARE_STALKERWARE — monitoring software, keylogger, RAT distribution language
-- FAKE_ANTIVIRUS — scareware, fake security alerts, rogue AV download pages
-- MALVERTISING — ad-based malware delivery, malicious redirect chains
-- CREDENTIAL_STEALER — info-stealer delivery, browser extension abuse, form-jacking
-- BOTNET_C2 — command-and-control language, bot recruitment, zombie network
-- URL_OBFUSCATION — URL encoding tricks, redirect chains, cloaking patterns
-- DOMAIN_SQUATTING — typosquatting, homoglyph domains, brand impersonation domains
-- SEO_POISONING — fake search result pages, keyword stuffing, cloaked content
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+QUALITY RULES:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-ADDITIONAL CATEGORIES:
-- SOCIAL_ENGINEERING — manipulation tactics not covered above
-- BRAND_IMPERSONATION — fake brand pages, logo abuse, look-alike designs
-- GENERIC — does not fit any specific category (use sparingly)
+✓ Extract 2–7 word phrases specific to fraud/malware contexts
+✓ Include brand impersonation fragments (e.g., "microsoft security alert team")
+✓ Include crypto/payment patterns (e.g., "send bitcoin to this address")
+✓ Include fake authority language (e.g., "federal case number assigned")
+✓ Extract 20–80 patterns depending on text length — be generous, not selective
+✗ Skip generic filler: "please note", "thank you", "dear valued customer"
+✗ Skip patterns that appear constantly in legitimate emails/websites
+✗ Skip near-duplicates — keep only the most specific version
 
-═══════════════════════════════════════════════════════════════
-SEVERITY GUIDELINES:
-═══════════════════════════════════════════════════════════════
-- "low" (weight 1–8): Weak indicator, appears in legitimate text too.
-  Examples: "click here to continue", "your account", "important notice"
-- "medium" (weight 9–15): Moderate indicator, somewhat specific to scams.
-  Examples: "verify your identity immediately", "suspicious activity detected"
-- "high" (weight 16–22): Strong indicator, rarely appears in legitimate messages.
-  Examples: "wire transfer required", "gift card payment only", "your computer is infected"
-- "critical" (weight 23–30): Definitive scam/malware indicator.
-  Examples: "download TeamViewer now", "send bitcoin to wallet", "IRS arrest warrant"
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+OUTPUT — JSON ARRAY ONLY (no markdown, no explanation):
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-═══════════════════════════════════════════════════════════════
-PATTERN QUALITY RULES:
-═══════════════════════════════════════════════════════════════
-✓ DO: Extract 2-8 word phrases that are SPECIFIC to fraud/malware contexts
-✓ DO: Include technical file/URL patterns if present (e.g., ".exe download required")
-✓ DO: Include brand impersonation fragments (e.g., "microsoft security team")
-✓ DO: Include crypto wallet/payment patterns (e.g., "send to bitcoin address")
-✓ DO: Include fake authority patterns (e.g., "federal investigation case number")
-✓ DO: Extract 20-80 patterns depending on text length — be generous
-✗ DON'T: Include pure generic phrases like "please note", "thank you", "dear customer"
-✗ DON'T: Include phrases that appear frequently in legitimate email/web content
-✗ DON'T: Duplicate semantically identical patterns (keep the most specific one)
-✗ DON'T: Add patterns shorter than 2 words or longer than 8 words
+Start your response with [ and end with ]. Nothing before [, nothing after ].
 
-═══════════════════════════════════════════════════════════════
-OUTPUT FORMAT — JSON ARRAY ONLY:
-═══════════════════════════════════════════════════════════════
-[
-  {
-    "text": "the exact scam phrase (2-8 words, lowercase)",
-    "category": "CATEGORY_NAME",
-    "frequency": 2,
-    "specificityScore": 0.92,
-    "suggestedWeight": 24,
-    "suggestedSeverity": "critical",
-    "sourceExamples": [
-      "Full sentence from the source text where this appears...",
-      "Another sentence where this pattern appears..."
-    ]
-  }
-]
+Each item must follow this exact structure:
+{
+  "text": "the scam phrase in lowercase (2-7 words)",
+  "category": "CATEGORY_NAME",
+  "frequency": 1,
+  "specificityScore": 0.88,
+  "suggestedWeight": 18,
+  "suggestedSeverity": "high",
+  "sourceExamples": ["Exact sentence from the source text containing this phrase"]
+}
 
-CRITICAL OUTPUT RULES:
-- Output ONLY the JSON array. No markdown fences. No explanations. No preamble.
-- Start your response with [ and end with ]
-- All "text" values must be lowercase
-- Include 1-3 sourceExamples per pattern (copy from the provided text)
-- specificityScore: 0.0 = found in normal text, 1.0 = only in scam/malware content
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+FRAUD TEXT TO ANALYZE:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-═══════════════════════════════════════════════════════════════
---- FRAUD/MALWARE TEXT TO ANALYZE BELOW THIS LINE ---
-═══════════════════════════════════════════════════════════════
-
-[PASTE YOUR FRAUD REPORT, PHISHING EMAIL, MALWARE DESCRIPTION, OR THREAT INTEL TEXT HERE]`;
+${textBlock}`;
 }
 
 // Keep a static export for backward compatibility — but the function above

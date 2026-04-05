@@ -6,11 +6,10 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@supabase/ssr";
-import { promises as fs } from "fs";
-import path from "path";
 import { parseUploadedFile } from "@/lib/pattern-ingestion/file-parser";
 import { extractPatterns } from "@/lib/pattern-ingestion/pattern-extractor";
 import { parseLlmOutput } from "@/lib/pattern-ingestion/llm-prompt-template";
+import { readPatterns, writePatterns } from "@/lib/pattern-ingestion/patterns-store";
 import type { ExtractedPattern } from "@/lib/pattern-ingestion/pattern-extractor";
 
 // ---------------------------------------------------------------------------
@@ -40,34 +39,7 @@ async function requireAdmin(req: NextRequest): Promise<boolean> {
   }
 }
 
-// ---------------------------------------------------------------------------
-// Storage — custom_patterns.json alongside this route
-// ---------------------------------------------------------------------------
-
-const PATTERNS_FILE = path.join(process.cwd(), "data", "custom_patterns.json");
-
-async function ensureDataDir(): Promise<void> {
-  const dir = path.dirname(PATTERNS_FILE);
-  try {
-    await fs.mkdir(dir, { recursive: true });
-  } catch {
-    // already exists
-  }
-}
-
-async function readPatterns(): Promise<ExtractedPattern[]> {
-  try {
-    const raw = await fs.readFile(PATTERNS_FILE, "utf-8");
-    return JSON.parse(raw) as ExtractedPattern[];
-  } catch {
-    return [];
-  }
-}
-
-async function writePatterns(patterns: ExtractedPattern[]): Promise<void> {
-  await ensureDataDir();
-  await fs.writeFile(PATTERNS_FILE, JSON.stringify(patterns, null, 2), "utf-8");
-}
+// Storage is handled by Supabase (patterns-store.ts) — no filesystem writes
 
 // ---------------------------------------------------------------------------
 // POST — Upload file or LLM JSON, parse, extract patterns

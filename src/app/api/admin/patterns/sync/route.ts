@@ -11,8 +11,7 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@supabase/ssr";
-import { promises as fs } from "fs";
-import path from "path";
+import { readPatterns, writePatterns } from "@/lib/pattern-ingestion/patterns-store";
 import type { ExtractedPattern } from "@/lib/pattern-ingestion/pattern-extractor";
 
 // ---------------------------------------------------------------------------
@@ -32,20 +31,7 @@ async function requireAdmin(req: NextRequest): Promise<boolean> {
   } catch { return false; }
 }
 
-// ---------------------------------------------------------------------------
-// Pattern file helpers
-// ---------------------------------------------------------------------------
-const PATTERNS_FILE = path.join(process.cwd(), "data", "custom_patterns.json");
-
-async function readPatterns(): Promise<ExtractedPattern[]> {
-  try { return JSON.parse(await fs.readFile(PATTERNS_FILE, "utf-8")) as ExtractedPattern[]; }
-  catch { return []; }
-}
-
-async function writePatterns(p: ExtractedPattern[]): Promise<void> {
-  await fs.mkdir(path.dirname(PATTERNS_FILE), { recursive: true });
-  await fs.writeFile(PATTERNS_FILE, JSON.stringify(p, null, 2), "utf-8");
-}
+// Storage is handled by Supabase (patterns-store.ts) — no filesystem writes
 
 // ---------------------------------------------------------------------------
 // Severity rank for upgrade comparison
