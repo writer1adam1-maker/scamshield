@@ -1,0 +1,340 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ScamShield</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      width: 360px;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: #0a0e1a;
+      color: #e2e8f0;
+      font-size: 13px;
+    }
+
+    /* ── Header ── */
+    .header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 14px 16px 12px;
+      border-bottom: 1px solid #1e293b;
+      background: #0d1322;
+    }
+    .logo-icon {
+      width: 28px;
+      height: 28px;
+      background: rgba(0,212,255,0.1);
+      border: 1px solid rgba(0,212,255,0.25);
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 15px;
+    }
+    .logo-text { font-size: 15px; font-weight: 700; letter-spacing: -0.3px; }
+    .logo-text span { color: #00d4ff; }
+    .version { margin-left: auto; font-size: 10px; color: #475569; font-family: monospace; }
+
+    /* ── Body ── */
+    .body { padding: 14px 16px; }
+
+    /* ── Input section ── */
+    .input-label {
+      font-size: 10px;
+      font-family: monospace;
+      color: #64748b;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      margin-bottom: 6px;
+    }
+    .input-row {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 10px;
+    }
+    .url-input {
+      flex: 1;
+      background: #111827;
+      border: 1px solid #1e293b;
+      border-radius: 8px;
+      color: #e2e8f0;
+      font-size: 12px;
+      font-family: monospace;
+      padding: 8px 10px;
+      outline: none;
+      transition: border-color 0.15s;
+    }
+    .url-input:focus { border-color: rgba(0,212,255,0.4); }
+    .url-input::placeholder { color: #334155; }
+
+    .btn-scan {
+      padding: 8px 14px;
+      background: #00d4ff;
+      color: #0a0e1a;
+      border: none;
+      border-radius: 8px;
+      font-weight: 700;
+      font-size: 12px;
+      cursor: pointer;
+      transition: opacity 0.15s;
+      white-space: nowrap;
+    }
+    .btn-scan:hover { opacity: 0.85; }
+    .btn-scan:disabled { opacity: 0.4; cursor: not-allowed; }
+
+    .btn-current {
+      width: 100%;
+      padding: 7px;
+      background: transparent;
+      border: 1px solid #1e293b;
+      border-radius: 8px;
+      color: #64748b;
+      font-size: 11px;
+      cursor: pointer;
+      transition: border-color 0.15s, color 0.15s;
+      margin-bottom: 12px;
+    }
+    .btn-current:hover { border-color: rgba(0,212,255,0.3); color: #94a3b8; }
+
+    /* ── Loading ── */
+    .loading {
+      display: none;
+      align-items: center;
+      gap: 8px;
+      padding: 12px;
+      color: #64748b;
+      font-size: 12px;
+    }
+    .spinner {
+      width: 14px;
+      height: 14px;
+      border: 2px solid #1e293b;
+      border-top-color: #00d4ff;
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── Result card ── */
+    .result { display: none; }
+
+    .score-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 14px;
+      border-radius: 10px;
+      margin-bottom: 10px;
+      border: 1px solid;
+    }
+    .score-circle {
+      width: 52px;
+      height: 52px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+      font-weight: 800;
+      font-family: monospace;
+      border: 2px solid;
+      flex-shrink: 0;
+    }
+    .score-info { flex: 1; }
+    .threat-level {
+      font-size: 15px;
+      font-weight: 700;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+    }
+    .category {
+      font-size: 10px;
+      font-family: monospace;
+      color: #64748b;
+      margin-top: 2px;
+    }
+
+    /* Level colours */
+    .level-safe    { background: rgba(34,197,94,0.06);  border-color: rgba(34,197,94,0.2);  }
+    .level-low     { background: rgba(34,197,94,0.06);  border-color: rgba(34,197,94,0.2);  }
+    .level-medium  { background: rgba(251,191,36,0.06); border-color: rgba(251,191,36,0.2); }
+    .level-high    { background: rgba(239,68,68,0.06);  border-color: rgba(239,68,68,0.2);  }
+    .level-critical{ background: rgba(220,38,38,0.08);  border-color: rgba(220,38,38,0.3);  }
+
+    .color-safe    { color: #22c55e; border-color: rgba(34,197,94,0.4);  }
+    .color-low     { color: #22c55e; border-color: rgba(34,197,94,0.4);  }
+    .color-medium  { color: #fbbf24; border-color: rgba(251,191,36,0.4); }
+    .color-high    { color: #ef4444; border-color: rgba(239,68,68,0.4);  }
+    .color-critical{ color: #dc2626; border-color: rgba(220,38,38,0.5);  }
+
+    /* ── WHOIS/SSL badge row ── */
+    .meta-row {
+      display: flex;
+      gap: 6px;
+      margin-bottom: 10px;
+      flex-wrap: wrap;
+    }
+    .meta-badge {
+      font-size: 10px;
+      font-family: monospace;
+      padding: 3px 7px;
+      border-radius: 4px;
+      border: 1px solid;
+    }
+    .badge-ok   { background: rgba(34,197,94,0.08);  border-color: rgba(34,197,94,0.25);  color: #22c55e; }
+    .badge-warn { background: rgba(251,191,36,0.08); border-color: rgba(251,191,36,0.25); color: #fbbf24; }
+    .badge-bad  { background: rgba(239,68,68,0.08);  border-color: rgba(239,68,68,0.25);  color: #ef4444; }
+    .badge-gray { background: rgba(100,116,139,0.08);border-color: rgba(100,116,139,0.25);color: #64748b; }
+
+    /* ── Evidence list ── */
+    .evidence-title {
+      font-size: 10px;
+      font-family: monospace;
+      color: #475569;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      margin-bottom: 6px;
+    }
+    .evidence-list { list-style: none; display: flex; flex-direction: column; gap: 4px; }
+    .evidence-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 7px;
+      font-size: 11px;
+      color: #94a3b8;
+      line-height: 1.4;
+    }
+    .dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      flex-shrink: 0;
+      margin-top: 4px;
+    }
+    .dot-low      { background: #22c55e; }
+    .dot-medium   { background: #fbbf24; }
+    .dot-high     { background: #ef4444; }
+    .dot-critical { background: #dc2626; }
+
+    /* ── Confidence bar ── */
+    .ci-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-top: 10px;
+      padding-top: 10px;
+      border-top: 1px solid #1e293b;
+    }
+    .ci-label { font-size: 10px; font-family: monospace; color: #475569; flex-shrink: 0; }
+    .ci-bar-bg { flex: 1; height: 4px; background: #1e293b; border-radius: 2px; overflow: hidden; }
+    .ci-bar-fill { height: 100%; background: #00d4ff; border-radius: 2px; }
+    .ci-val { font-size: 10px; font-family: monospace; color: #64748b; flex-shrink: 0; }
+
+    /* ── Error ── */
+    .error-box {
+      display: none;
+      padding: 10px 12px;
+      background: rgba(239,68,68,0.08);
+      border: 1px solid rgba(239,68,68,0.2);
+      border-radius: 8px;
+      color: #ef4444;
+      font-size: 11px;
+    }
+
+    /* ── Footer ── */
+    .footer {
+      padding: 8px 16px;
+      border-top: 1px solid #1e293b;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .footer a {
+      font-size: 10px;
+      color: #475569;
+      text-decoration: none;
+      font-family: monospace;
+    }
+    .footer a:hover { color: #00d4ff; }
+    .processing-time { font-size: 10px; font-family: monospace; color: #334155; }
+  </style>
+</head>
+<body>
+
+  <!-- Header -->
+  <div class="header">
+    <div class="logo-icon">🛡</div>
+    <div class="logo-text">Scam<span>Shield</span></div>
+    <div class="version">v2.0</div>
+  </div>
+
+  <!-- Body -->
+  <div class="body">
+
+    <!-- Input -->
+    <div class="input-label">Scan URL or paste text</div>
+    <div class="input-row">
+      <input
+        id="inputField"
+        class="url-input"
+        type="text"
+        placeholder="https://suspicious-site.com"
+        autocomplete="off"
+        spellcheck="false"
+      />
+      <button id="btnScan" class="btn-scan">Scan</button>
+    </div>
+
+    <button id="btnCurrent" class="btn-current">⚡ Scan current tab URL</button>
+
+    <!-- Loading -->
+    <div id="loading" class="loading">
+      <div class="spinner"></div>
+      Analyzing with VERIDICT engine…
+    </div>
+
+    <!-- Error -->
+    <div id="errorBox" class="error-box"></div>
+
+    <!-- Result -->
+    <div id="result" class="result">
+      <!-- Score row -->
+      <div id="scoreRow" class="score-row">
+        <div id="scoreCircle" class="score-circle"></div>
+        <div class="score-info">
+          <div id="threatLevel" class="threat-level"></div>
+          <div id="category" class="category"></div>
+        </div>
+      </div>
+
+      <!-- WHOIS/SSL badges -->
+      <div id="metaRow" class="meta-row"></div>
+
+      <!-- Evidence -->
+      <div class="evidence-title">Evidence</div>
+      <ul id="evidenceList" class="evidence-list"></ul>
+
+      <!-- Confidence interval -->
+      <div id="ciRow" class="ci-row">
+        <span class="ci-label">Confidence</span>
+        <div class="ci-bar-bg"><div id="ciFill" class="ci-bar-fill"></div></div>
+        <span id="ciVal" class="ci-val"></span>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Footer -->
+  <div class="footer">
+    <a href="https://scamshieldy.com" target="_blank">scamshieldy.com ↗</a>
+    <a href="#" id="settingsLink" style="margin-left:4px;">⚙ Settings</a>
+    <span id="procTime" class="processing-time"></span>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>

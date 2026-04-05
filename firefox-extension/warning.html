@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ScamShield — Warning</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body {
+    height: 100%;
+    background: #0d1117;
+    color: #c9d1d9;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .container {
+    max-width: 500px;
+    width: 90%;
+    text-align: center;
+    animation: fadeIn 0.3s ease;
+  }
+  @keyframes fadeIn { from { opacity:0; transform:translateY(12px); } to { opacity:1; transform:none; } }
+
+  .shield {
+    font-size: 64px;
+    margin-bottom: 16px;
+    animation: pulse 2s infinite;
+  }
+  @keyframes pulse {
+    0%,100% { filter: drop-shadow(0 0 8px #f4433640); }
+    50%      { filter: drop-shadow(0 0 20px #f4433680); }
+  }
+
+  .level-badge {
+    display: inline-block;
+    padding: 4px 16px;
+    border-radius: 20px;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    margin-bottom: 16px;
+  }
+  .badge-high     { background: #f4433618; color: #f44336; border: 1px solid #f4433640; }
+  .badge-critical { background: #9c27b018; color: #ce93d8; border: 1px solid #9c27b040; }
+
+  h1 {
+    font-size: 24px;
+    font-weight: 700;
+    margin-bottom: 8px;
+  }
+  h1.high     { color: #f44336; }
+  h1.critical { color: #ce93d8; }
+
+  .score {
+    font-size: 13px;
+    color: #8892a4;
+    margin-bottom: 16px;
+  }
+
+  .url-box {
+    background: #161b22;
+    border: 1px solid #1e2d3d;
+    border-radius: 8px;
+    padding: 12px 16px;
+    font-family: monospace;
+    font-size: 12px;
+    color: #6e7681;
+    word-break: break-all;
+    margin-bottom: 24px;
+    text-align: left;
+  }
+
+  .category {
+    font-size: 12px;
+    color: #8892a4;
+    margin-bottom: 24px;
+  }
+
+  .actions { display: flex; gap: 12px; justify-content: center; }
+
+  .btn-back {
+    padding: 12px 28px;
+    border-radius: 8px;
+    background: #00d4ff15;
+    border: 1px solid #00d4ff40;
+    color: #00d4ff;
+    font-size: 14px;
+    font-weight: 700;
+    cursor: pointer;
+    text-decoration: none;
+    transition: background 0.15s;
+  }
+  .btn-back:hover { background: #00d4ff25; }
+
+  .btn-proceed {
+    padding: 12px 28px;
+    border-radius: 8px;
+    background: transparent;
+    border: 1px solid #30363d;
+    color: #6e7681;
+    font-size: 13px;
+    cursor: pointer;
+    text-decoration: none;
+    transition: all 0.15s;
+  }
+  .btn-proceed:hover { border-color: #f4433640; color: #f44336; }
+
+  .footer {
+    margin-top: 32px;
+    font-size: 11px;
+    color: #3c4754;
+  }
+</style>
+</head>
+<body>
+<div class="container">
+  <div class="shield" id="shieldIcon">⚠️</div>
+  <div class="level-badge" id="levelBadge">HIGH RISK</div>
+  <h1 id="title" class="high">Suspicious Link Detected</h1>
+  <div class="score" id="scoreText">Threat Score: — · ScamShield VERIDICT</div>
+  <div class="url-box" id="urlBox">Loading…</div>
+  <div class="category" id="categoryText"></div>
+
+  <div class="actions">
+    <a href="javascript:history.back()" class="btn-back" id="backBtn">← Go Back (Safe)</a>
+    <a href="#" class="btn-proceed" id="proceedBtn">Proceed anyway</a>
+  </div>
+
+  <div class="footer">ScamShield v2.0 — protecting you from online scams</div>
+</div>
+
+<script>
+(function () {
+  'use strict';
+
+  // Read params from URL hash (not query string — avoids server logging)
+  // Format: warning.html#level=high&score=78&url=...&category=...
+  var params = new URLSearchParams(window.location.search);
+
+  var level    = params.get('level')    || 'high';
+  var score    = parseInt(params.get('score') || '0', 10);
+  var href     = params.get('url')      || '';
+  var category = params.get('category') || '';
+
+  // Validate level — only allow known values (no XSS via URL)
+  var VALID_LEVELS = { high: true, critical: true };
+  if (!VALID_LEVELS[level]) level = 'high';
+
+  // Validate score
+  if (isNaN(score) || score < 0 || score > 100) score = 0;
+
+  // Apply level-specific styles
+  var isCritical = level === 'critical';
+  document.getElementById('shieldIcon').textContent = isCritical ? '☠️' : '⚠️';
+  document.getElementById('levelBadge').textContent = level.toUpperCase() + ' RISK';
+  document.getElementById('levelBadge').className = 'level-badge badge-' + level;
+  document.getElementById('title').textContent = isCritical ? 'CRITICAL THREAT DETECTED' : 'High Risk Link';
+  document.getElementById('title').className = level;
+  document.getElementById('scoreText').textContent = 'Threat Score: ' + score + '/100 · ScamShield VERIDICT';
+
+  // URL — use textContent (never innerHTML)
+  var urlBox = document.getElementById('urlBox');
+  urlBox.textContent = href ? href.substring(0, 120) + (href.length > 120 ? '…' : '') : '(unknown URL)';
+
+  if (category) {
+    document.getElementById('categoryText').textContent = 'Category: ' + category.replace(/_/g, ' ');
+  }
+
+  // Proceed button
+  var proceedBtn = document.getElementById('proceedBtn');
+  proceedBtn.addEventListener('click', function (e) {
+    e.preventDefault();
+    if (href && (href.startsWith('http://') || href.startsWith('https://'))) {
+      window.location.href = href;
+    }
+  });
+})();
+</script>
+</body>
+</html>

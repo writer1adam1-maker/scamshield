@@ -1,0 +1,68 @@
+{
+  "manifest_version": 3,
+  "name": "ScamShield",
+  "version": "2.0.0",
+  "description": "Real-time link scanning — every link gets a live threat score before you click.",
+  "permissions": [
+    "activeTab",
+    "scripting",
+    "storage",
+    "contextMenus"
+  ],
+  "host_permissions": [
+    "https://scamshieldy.com/*"
+  ],
+  "background": {
+    "scripts": ["background-script.js"],
+    "type": "module"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "http://*/*",
+        "https://*/*"
+      ],
+      "js": [
+        "content-script.js",
+        "link-scanner.js"
+      ],
+      "css": [
+        "link-scanner.css"
+      ],
+      "run_at": "document_idle"
+    }
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": ["warning.html"],
+      "matches": ["<all_urls>"]
+    }
+  ],
+  "options_ui": {
+    "page": "options.html",
+    "browser_style": false
+  },
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "ScamShield — Real-time link protection",
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "48": "icons/icon48.png",
+      "128": "icons/icon128.png"
+    }
+  },
+  "icons": {
+    "16": "icons/icon16.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  },
+  "content_security_policy": {
+    "extension_pages": "script-src 'self'; object-src 'none';"
+  },
+  "browser_specific_settings": {
+    "gecko": {
+      "id": "scamshield@scamshieldy.com",
+      "strict_min_version": "128.0"
+    }
+  }
+}
