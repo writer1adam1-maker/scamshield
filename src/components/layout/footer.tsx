@@ -17,6 +17,10 @@ export function Footer() {
           <Link href="/terms" className="hover:text-text-secondary transition-colors">
             Terms of Service
           </Link>
+          <span className="text-white/10">|</span>
+          <Link href="/refund" className="hover:text-text-secondary transition-colors">
+            Refund Policy
+          </Link>
         </nav>
       </div>
     </footer>
