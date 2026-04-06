@@ -6,7 +6,6 @@ import { ScanResults } from "@/components/results/scan-results";
 import type { VERIDICTResult } from "@/lib/algorithms/types";
 import type { ThreatCategory } from "@/components/ui/threat-badge";
 import type { EvidenceType } from "@/components/ui/evidence-card";
-import Link from "next/link";
 import { Shield, AlertTriangle, TrendingUp, Zap, Eye, Layers, Brain, Globe } from "lucide-react";
 
 interface SiteStats {
@@ -258,15 +257,6 @@ export default function HomePage() {
         </section>
       )}
 
-      {/* Footer */}
-      <footer className="mt-16 pt-8 border-t border-white/5 text-center">
-        <p className="text-text-muted text-xs font-mono">
-          © {new Date().getFullYear()} ScamShieldy &nbsp;·&nbsp;{" "}
-          <Link href="/privacy" className="hover:text-text-secondary transition-colors">
-            Privacy Policy
-          </Link>
-        </p>
-      </footer>
     </div>
   );
 }

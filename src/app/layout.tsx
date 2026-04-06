@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Inter, JetBrains_Mono } from "next/font/google";
 import { Sidebar } from "@/components/layout/sidebar";
+import { Footer } from "@/components/layout/footer";
 import { InstallPrompt } from "@/components/pwa/install-prompt";
 import { TourProvider } from "@/components/onboarding/tour-provider";
 import { TourTooltip } from "@/components/onboarding/tour-tooltip";
@@ -55,7 +56,10 @@ export default function RootLayout({
           <div className="relative flex min-h-screen">
             <Sidebar />
             <main className="flex-1 ml-0 md:ml-64 min-h-screen">
-              <div className="pt-16 px-4 pb-4 md:pt-8 md:px-8 md:pb-8 max-w-6xl mx-auto">{children}</div>
+              <div className="pt-16 px-4 pb-4 md:pt-8 md:px-8 md:pb-8 max-w-6xl mx-auto">
+                {children}
+                <Footer />
+              </div>
             </main>
           </div>
           <InstallPrompt />
