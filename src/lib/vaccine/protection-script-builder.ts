@@ -270,18 +270,25 @@ export function buildProtectionScript(
   rules: InjectionRule[],
   url: string,
   threats: string[],
+  userModules?: string[],
 ): string {
-  // Collect which modules to activate
-  const activeModules = new Set<string>();
+  // If user specified which modules to use, respect that
+  if (userModules && userModules.length > 0) {
+    const activatedModuleList = userModules
+      .filter((m) => MODULES[m])
+      .map((m) => MODULES[m]);
 
-  // Always include form blocking and network monitor
+    return _buildScript(activatedModuleList, url);
+  }
+
+  // Auto-detect modules from threats and rules
+  const activeModules = new Set<string>();
   activeModules.add("block_external_forms");
   activeModules.add("monitor_network");
 
   for (const rule of rules) {
     const mods = THREAT_MODULE_MAP[rule.type] ?? [];
     mods.forEach((m) => activeModules.add(m));
-    // Also match by rule id / message keywords
     const id = (rule.id + " " + (rule.message ?? "")).toLowerCase();
     for (const [key, mods2] of Object.entries(THREAT_MODULE_MAP)) {
       if (id.includes(key.replace(/_/g, ""))) mods2.forEach((m) => activeModules.add(m));
@@ -299,6 +306,10 @@ export function buildProtectionScript(
     .filter((m) => MODULES[m])
     .map((m) => MODULES[m]);
 
+  return _buildScript(activatedModuleList, url);
+}
+
+function _buildScript(activatedModuleList: ProtectionModule[], url: string): string {
   const moduleCode = activatedModuleList.map((m) => m.code).join("\n\n");
   const moduleNames = activatedModuleList.map((m) => `"${m.name}"`).join(", ");
   const safeUrl = url.replace(/['"\\]/g, "").substring(0, 200);
@@ -345,7 +356,10 @@ export function buildProtectionScript(
 // ---------------------------------------------------------------------------
 // Generate a short summary of what the script does
 // ---------------------------------------------------------------------------
-export function getScriptSummary(threats: string[], rules: InjectionRule[]): string[] {
+export function getScriptSummary(threats: string[], rules: InjectionRule[], userModules?: string[]): string[] {
+  if (userModules && userModules.length > 0) {
+    return userModules.filter((m) => MODULES[m]).map((m) => MODULES[m].name);
+  }
   const activeModules = new Set<string>();
   activeModules.add("block_external_forms");
   activeModules.add("monitor_network");

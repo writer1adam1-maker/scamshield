@@ -18,7 +18,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Rate limit exceeded" }, { status: 429 });
   }
 
-  let body: { url?: string; threats?: string[]; rules?: InjectionRule[] };
+  let body: { url?: string; threats?: string[]; rules?: InjectionRule[]; modules?: string[] };
   try { body = await req.json(); }
   catch { return NextResponse.json({ error: "Invalid body" }, { status: 400 }); }
 
@@ -29,9 +29,10 @@ export async function POST(req: NextRequest) {
 
   const threats = Array.isArray(body.threats) ? body.threats.slice(0, 50) : [];
   const rules: InjectionRule[] = Array.isArray(body.rules) ? body.rules.slice(0, 50) : [];
+  const userModules = Array.isArray(body.modules) ? body.modules : undefined;
 
-  const script = buildProtectionScript(rules, validation.sanitizedUrl, threats);
-  const summary = getScriptSummary(threats, rules);
+  const script = buildProtectionScript(rules, validation.sanitizedUrl, threats, userModules);
+  const summary = getScriptSummary(threats, rules, userModules);
 
   return NextResponse.json({
     script,

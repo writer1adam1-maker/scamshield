@@ -3,35 +3,14 @@
 import { useState, useEffect, useRef } from "react";
 import {
   Shield, Syringe, Globe, Loader2, AlertTriangle, CheckCircle2,
-  XCircle, Activity, Zap, Fingerprint, Brain, Thermometer, Network,
-  TrendingUp, ChevronDown, ChevronUp, Lock, Dna, Target, Clock,
-  ShieldCheck, RefreshCw, Info, Phone, MessageSquare, Mail, QrCode,
-  FlaskConical, Microscope, GitBranch, Waves, Copy, Check, Terminal,
-  ExternalLink,
+  XCircle, ChevronDown, ChevronUp, Lock, Dna, Clock,
+  ShieldCheck, Info, Copy, Check, Terminal, ExternalLink,
+  FlaskConical, GitBranch, Waves, Network, Target,
+  Activity, Fingerprint, Thermometer, Brain, QrCode,
+  Bookmark,
 } from "lucide-react";
-import type { VaccineAnalyzeResponse, VaccineDNAResult, VaccineImmunityResult } from "@/app/api/vaccine/analyze/route";
 import { dnaSegmentColor } from "@/lib/vaccine/threat-dna";
 import { tierColor } from "@/lib/vaccine/immunity-model";
-
-// ---------------------------------------------------------------------------
-// Scan modes
-// ---------------------------------------------------------------------------
-
-type ScanMode = "website" | "phone" | "sms" | "email" | "qr";
-
-const SCAN_MODES: Array<{
-  id: ScanMode;
-  label: string;
-  icon: React.ComponentType<{ size?: number; className?: string }>;
-  placeholder: string;
-  desc: string;
-}> = [
-  { id: "website", icon: Globe,        label: "Website",  placeholder: "Enter URL (e.g. example.com)", desc: "Scan any site for malware, phishing forms, fake scripts" },
-  { id: "phone",   icon: Phone,        label: "Phone",    placeholder: "Paste phone number(s) to check (e.g. +1-800-555-0100)", desc: "Check phone numbers for premium-rate fraud and scam call centers" },
-  { id: "sms",     icon: MessageSquare, label: "SMS/Text", placeholder: "Paste the suspicious text message here…", desc: "Detect manipulation tactics in suspicious texts and DMs" },
-  { id: "email",   icon: Mail,         label: "Email",    placeholder: "Paste email body or headers here…", desc: "Analyse emails for phishing language, fake authority, and deception" },
-  { id: "qr",      icon: QrCode,       label: "QR Code",  placeholder: "Paste the URL decoded from the QR code…", desc: "Scan the URL hidden inside a QR code for malicious content" },
-];
 
 // ---------------------------------------------------------------------------
 // Types
@@ -41,9 +20,6 @@ interface InjectionRule {
   id: string;
   type: "block" | "warn" | "sandbox" | "disable" | "monitor";
   selector?: string;
-  attribute?: string;
-  targetUrl?: string;
-  scriptContent?: string;
   message?: string;
   expiresAt: number;
 }
@@ -77,143 +53,114 @@ interface BreachCard {
   message?: string;
 }
 
-interface VaccineRecord {
-  id: string;        // matches BreachCard.id
+interface ProtectResponse {
+  script: string;
+  modules: string[];
+  moduleCount: number;
   url: string;
-  appliedAt: string; // ISO
-  expiresAt: string; // ISO (appliedAt + 1 hour)
+}
+
+interface DNAResult {
+  hex: string;
+  dimensions: Array<{ name: string; intensity: number; label: string }>;
+  dominantStrand: string;
+  mutationClass: string;
+  mutationLabel: string;
+}
+
+interface ImmunityResult {
+  strength: number;
+  peakStrength: number;
+  tier: string;
+  tierLabel: string;
+  boosterDueAt: number;
+  exposureCount: number;
+  decayRateLabel: string;
+  antibodies: Array<{ dimension: string; strength: number; targetLabel: string }>;
 }
 
 // ---------------------------------------------------------------------------
 // Constants
 // ---------------------------------------------------------------------------
 
-const STORAGE_KEY = "scamshield:vaccines";
-const VACCINE_TTL_MS = 60 * 60 * 1000; // 1 hour
-
-const THREAT_COLORS: Record<string, { bg: string; text: string; border: string; glow: string }> = {
-  safe:     { bg: "bg-safe/10",     text: "text-safe",     border: "border-safe/20",     glow: "shadow-[0_0_20px_rgba(0,229,160,0.15)]" },
-  low:      { bg: "bg-safe/10",     text: "text-safe",     border: "border-safe/20",     glow: "" },
-  medium:   { bg: "bg-caution/10",  text: "text-caution",  border: "border-caution/20",  glow: "shadow-[0_0_20px_rgba(251,191,36,0.15)]" },
-  high:     { bg: "bg-danger/10",   text: "text-danger",   border: "border-danger/20",   glow: "shadow-[0_0_20px_rgba(255,59,92,0.15)]" },
-  critical: { bg: "bg-critical/10", text: "text-critical", border: "border-critical/20", glow: "shadow-[0_0_25px_rgba(255,23,68,0.2)]" },
-};
-
-const SEVERITY_COLORS: Record<string, string> = {
-  low:      "bg-safe/10 text-safe border-safe/20",
-  medium:   "bg-caution/10 text-caution border-caution/20",
-  high:     "bg-danger/10 text-danger border-danger/20",
-  critical: "bg-critical/10 text-critical border-critical/20",
+const THREAT_COLORS: Record<string, { text: string; border: string; glow: string }> = {
+  safe:     { text: "text-safe",     border: "border-safe/20",     glow: "shadow-[0_0_20px_rgba(0,229,160,0.15)]" },
+  low:      { text: "text-safe",     border: "border-safe/20",     glow: "" },
+  medium:   { text: "text-caution",  border: "border-caution/20",  glow: "shadow-[0_0_20px_rgba(251,191,36,0.15)]" },
+  high:     { text: "text-danger",   border: "border-danger/20",   glow: "shadow-[0_0_20px_rgba(255,59,92,0.15)]" },
+  critical: { text: "text-critical", border: "border-critical/20", glow: "shadow-[0_0_25px_rgba(255,23,68,0.2)]" },
 };
 
 const SEVERITY_LEFT: Record<string, string> = {
-  low:      "border-l-safe",
-  medium:   "border-l-caution",
-  high:     "border-l-danger",
-  critical: "border-l-critical",
+  low: "border-l-safe", medium: "border-l-caution", high: "border-l-danger", critical: "border-l-critical",
 };
 
-// Maps rule type → default severity
+const SEVERITY_BADGE: Record<string, string> = {
+  low: "bg-safe/10 text-safe border-safe/20",
+  medium: "bg-caution/10 text-caution border-caution/20",
+  high: "bg-danger/10 text-danger border-danger/20",
+  critical: "bg-critical/10 text-critical border-critical/20",
+};
+
 const RULE_SEVERITY: Record<string, BreachCard["severity"]> = {
-  block:   "critical",
-  disable: "high",
-  sandbox: "medium",
-  warn:    "medium",
-  monitor: "low",
+  block: "critical", disable: "high", sandbox: "medium", warn: "medium", monitor: "low",
 };
 
-// Maps id prefix / keywords → human-readable category + title
 const TITLE_MAP: Array<{ keywords: string[]; title: string; category: string }> = [
   { keywords: ["phishing", "credential"],      title: "Credential Harvesting Form",       category: "Phishing"          },
   { keywords: ["payment", "card"],             title: "Fake Payment Form Detected",        category: "Financial Fraud"   },
   { keywords: ["entropy", "obfuscat"],         title: "Obfuscated Script Detected",        category: "Malicious Code"    },
   { keywords: ["cryptomin", "miner"],          title: "Cryptominer Script Found",          category: "Malware"           },
-  { keywords: ["keylog"],                      title: "Keylogger Behaviour Detected",      category: "Malware"           },
+  { keywords: ["keylog"],                      title: "Keylogger Detected",                category: "Malware"           },
   { keywords: ["ransomware"],                  title: "Ransomware Pattern Detected",       category: "Malware"           },
   { keywords: ["malware", "exploit"],          title: "Malware Signature Found",           category: "Malware"           },
   { keywords: ["iframe"],                      title: "Hidden iFrame Injection",           category: "Script Injection"  },
   { keywords: ["redirect"],                    title: "Suspicious Redirect Chain",         category: "Redirect Attack"   },
   { keywords: ["xss"],                         title: "XSS Payload Detected",              category: "Script Injection"  },
-  { keywords: ["urgency", "fake_urgency"],     title: "Fake Urgency / Pressure Tactic",   category: "Social Engineering"},
-  { keywords: ["trust", "badge"],              title: "Fake Trust Badge Found",            category: "Deception"         },
+  { keywords: ["urgency", "fake_urgency"],     title: "Fake Urgency Tactic",               category: "Social Engineering"},
+  { keywords: ["trust", "badge"],              title: "Fake Trust Badge",                   category: "Deception"         },
   { keywords: ["spoof", "brand"],              title: "Spoofed Brand Identity",            category: "Phishing"          },
-  { keywords: ["review"],                      title: "Fake Reviews Detected",             category: "Deception"         },
-  { keywords: ["support", "chat"],             title: "Fake Support Chat Widget",          category: "Social Engineering"},
-  { keywords: ["clipboard"],                   title: "Clipboard Hijacking Attempt",       category: "Malware"           },
-  { keywords: ["popup"],                       title: "Popup Spam Behaviour",              category: "Deception"         },
+  { keywords: ["clipboard"],                   title: "Clipboard Hijacking",               category: "Malware"           },
+  { keywords: ["popup"],                       title: "Popup Spam",                         category: "Deception"         },
   { keywords: ["external", "domain", "form"],  title: "Form Submits to External Domain",  category: "Phishing"          },
 ];
 
-function mapToBreachCard(description: string, rule: InjectionRule, index: number): BreachCard {
-  const haystack = `${description} ${rule.id} ${rule.selector || ""} ${rule.message || ""}`.toLowerCase();
+// Available protection modules that users can toggle
+const ALL_MODULES = [
+  { id: "block_external_forms",    name: "Block External Forms",    desc: "Stop forms sending data to foreign servers", default: true },
+  { id: "block_credential_harvest", name: "Protect Credentials",     desc: "Block password/card data exfiltration", default: true },
+  { id: "disable_clipboard_hijack", name: "Clipboard Shield",        desc: "Prevent scripts from changing your clipboard", default: true },
+  { id: "remove_malicious_iframes", name: "Remove Hidden iFrames",   desc: "Remove invisible cross-origin iframes", default: true },
+  { id: "block_popup_spam",         name: "Block Popup Spam",        desc: "Limit aggressive popups and exit traps", default: true },
+  { id: "remove_fake_urgency",      name: "Kill Fake Urgency",       desc: "Disable countdown timers and pressure tactics", default: false },
+  { id: "disable_malicious_scripts", name: "Block Eval Injection",   desc: "Stop obfuscated eval() code execution", default: true },
+  { id: "monitor_network",          name: "Network Monitor",         desc: "Track which external servers the page contacts", default: true },
+];
 
-  let title = "Suspicious Behaviour Detected";
-  let category = "Unknown";
-  for (const entry of TITLE_MAP) {
-    if (entry.keywords.some((kw) => haystack.includes(kw))) {
-      title = entry.title;
-      category = entry.category;
-      break;
-    }
-  }
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
 
-  const severity = RULE_SEVERITY[rule.type] ?? "medium";
-
-  return {
-    id: rule.id || `breach-${index}`,
-    title,
-    description,
-    severity,
-    category,
-    ruleType: rule.type,
-    selector: rule.selector,
-    message: rule.message,
-  };
+function mapToBreachCard(desc: string, rule: InjectionRule, i: number): BreachCard {
+  const hay = `${desc} ${rule.id} ${rule.selector ?? ""} ${rule.message ?? ""}`.toLowerCase();
+  let title = "Suspicious Behaviour Detected", category = "Unknown";
+  for (const e of TITLE_MAP) { if (e.keywords.some(k => hay.includes(k))) { title = e.title; category = e.category; break; } }
+  return { id: rule.id || `breach-${i}`, title, description: desc, severity: RULE_SEVERITY[rule.type] ?? "medium", category, ruleType: rule.type, selector: rule.selector, message: rule.message };
 }
 
-function mapResponseToBreachCards(result: VaccineResponse): BreachCard[] {
-  const len = Math.max(result.threatsDetected.length, result.injectionRules.length);
+function mapResponseToBreachCards(r: VaccineResponse): BreachCard[] {
+  const len = Math.max(r.threatsDetected.length, r.injectionRules.length);
   const cards: BreachCard[] = [];
   for (let i = 0; i < len; i++) {
-    const desc = result.threatsDetected[i] || "No description available";
-    const rule = result.injectionRules[i] || { id: `rule-${i}`, type: "monitor" as const, expiresAt: 0 };
-    cards.push(mapToBreachCard(desc, rule, i));
+    cards.push(mapToBreachCard(r.threatsDetected[i] ?? "Threat detected", r.injectionRules[i] ?? { id: `r-${i}`, type: "monitor" as const, expiresAt: 0 }, i));
   }
-  // Deduplicate by title (keep first)
   const seen = new Set<string>();
-  return cards.filter((c) => { if (seen.has(c.title)) return false; seen.add(c.title); return true; });
+  return cards.filter(c => { if (seen.has(c.title)) return false; seen.add(c.title); return true; });
 }
 
-// ---------------------------------------------------------------------------
-// localStorage helpers
-// ---------------------------------------------------------------------------
-
-function loadVaccines(): VaccineRecord[] {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return [];
-    const all: VaccineRecord[] = JSON.parse(raw);
-    // Garbage-collect truly expired records (older than 2h for logging purposes)
-    const cutoff = Date.now() - 2 * VACCINE_TTL_MS;
-    return all.filter((v) => new Date(v.expiresAt).getTime() > cutoff);
-  } catch { return []; }
-}
-
-function saveVaccines(records: VaccineRecord[]): void {
-  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(records)); } catch { /* ignore */ }
-}
-
-function applyVaccine(card: BreachCard, url: string, existing: VaccineRecord[]): VaccineRecord[] {
-  const now = new Date();
-  const record: VaccineRecord = {
-    id: card.id,
-    url,
-    appliedAt: now.toISOString(),
-    expiresAt: new Date(now.getTime() + VACCINE_TTL_MS).toISOString(),
-  };
-  // Replace existing record with same id
-  const filtered = existing.filter((v) => v.id !== card.id);
-  return [...filtered, record];
+function buildBookmarklet(url: string): string {
+  const encoded = encodeURIComponent(url);
+  return `javascript:void(fetch('${window.location.origin}/api/vaccine/protect',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({url:location.href,threats:[],rules:[]})}).then(r=>r.json()).then(d=>{var s=document.createElement('script');s.textContent=d.script;document.head.appendChild(s)}).catch(e=>alert('ScamShieldy: '+e.message)))`;
 }
 
 // ---------------------------------------------------------------------------
@@ -221,129 +168,62 @@ function applyVaccine(card: BreachCard, url: string, existing: VaccineRecord[]):
 // ---------------------------------------------------------------------------
 
 export default function VaccinePage() {
-  const [mode, setMode] = useState<ScanMode>("website");
   const [url, setUrl] = useState("");
-  const [textInput, setTextInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<VaccineResponse | null>(null);
-  const [analyzeResult, setAnalyzeResult] = useState<VaccineAnalyzeResponse | null>(null);
   const [breachCards, setBreachCards] = useState<BreachCard[]>([]);
-  const [vaccines, setVaccines] = useState<VaccineRecord[] | null>(null); // null = not yet loaded
   const [error, setError] = useState<string | null>(null);
   const [showSynergos, setShowSynergos] = useState(false);
-  const [scriptModal, setScriptModal] = useState<{
-    script: string;
-    modules: string[];
-    url: string;
-    copied: boolean;
-  } | null>(null);
+  const [enabledModules, setEnabledModules] = useState<Set<string>>(
+    () => new Set(ALL_MODULES.filter(m => m.default).map(m => m.id))
+  );
+  const [scriptModal, setScriptModal] = useState<{ script: string; modules: string[]; url: string; copied: boolean } | null>(null);
+  const [showModules, setShowModules] = useState(false);
+  const [showBookmarklet, setShowBookmarklet] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  // Load vaccines from localStorage on mount
-  useEffect(() => {
-    setVaccines(loadVaccines());
-  }, []);
-
   async function handleScan() {
-    setLoading(true);
-    setError(null);
-    setResult(null);
-    setAnalyzeResult(null);
-    setBreachCards([]);
-
+    const trimmed = url.trim();
+    if (!trimmed) return;
+    setLoading(true); setError(null); setResult(null); setBreachCards([]);
     try {
-      if (mode === "website" || mode === "qr") {
-        const trimmed = url.trim();
-        if (!trimmed) { setLoading(false); return; }
-        const scanUrl = /^https?:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`;
-        const res = await fetch("/api/vaccine/scan", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ url: scanUrl }),
-        });
-        if (!res.ok) {
-          const data = await res.json().catch(() => ({}));
-          throw new Error(data.error || `Scan failed (${res.status})`);
-        }
-        const data: VaccineResponse = await res.json();
-        setResult(data);
-        setBreachCards(mapResponseToBreachCards(data));
-      } else {
-        // phone / sms / email — use the analyze endpoint
-        const trimmed = textInput.trim();
-        if (!trimmed) { setLoading(false); return; }
-        const apiMode = mode; // "phone" | "sms" | "email"
-        const res = await fetch("/api/vaccine/analyze", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ mode: apiMode, input: trimmed }),
-        });
-        if (!res.ok) {
-          const data = await res.json().catch(() => ({}));
-          throw new Error(data.error || `Analysis failed (${res.status})`);
-        }
-        const data: VaccineAnalyzeResponse = await res.json();
-        setAnalyzeResult(data);
-        // Map VaccineBreachPoint → BreachCard so we can reuse the same UI
-        setBreachCards(data.breachPoints.map((bp) => ({
-          id: bp.id,
-          title: bp.title,
-          description: bp.description,
-          severity: bp.severity,
-          category: bp.category,
-          ruleType: bp.ruleType,
-          message: bp.message,
-        })));
-      }
+      const scanUrl = /^https?:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`;
+      const res = await fetch("/api/vaccine/scan", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url: scanUrl }),
+      });
+      if (!res.ok) { const d = await res.json().catch(() => ({})); throw new Error(d.error || `Scan failed (${res.status})`); }
+      const data: VaccineResponse = await res.json();
+      setResult(data);
+      setBreachCards(mapResponseToBreachCards(data));
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Scan failed");
-    } finally {
-      setLoading(false);
-    }
+    } finally { setLoading(false); }
   }
 
-  async function handleVaccinate(card: BreachCard) {
-    // Save the vaccine record (localStorage)
-    const targetUrl = result?.url ?? (analyzeResult ? `scan:${analyzeResult.mode}` : "unknown");
-    const updated = applyVaccine(card, targetUrl, vaccines || []);
-    setVaccines(updated);
-    saveVaccines(updated);
-
-    // For website scans, also fetch + display the real protection script
-    if (result) {
-      try {
-        const res = await fetch("/api/vaccine/protect", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            url: result.url,
-            threats: result.threatsDetected,
-            rules: result.injectionRules,
-          }),
-        });
-        if (res.ok) {
-          const data = await res.json();
-          setScriptModal({ script: data.script, modules: data.modules ?? [], url: result.url, copied: false });
-        }
-      } catch { /* ignore — vaccine record still saved */ }
-    }
+  async function handleVaccinate() {
+    if (!result) return;
+    try {
+      const res = await fetch("/api/vaccine/protect", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          url: result.url,
+          threats: result.threatsDetected,
+          rules: result.injectionRules,
+          modules: [...enabledModules],
+        }),
+      });
+      if (res.ok) {
+        const data: ProtectResponse = await res.json();
+        setScriptModal({ script: data.script, modules: data.modules, url: result.url, copied: false });
+      }
+    } catch { /* ignore */ }
   }
 
-  async function handleRevaccinate(card: BreachCard) {
-    await handleVaccinate(card);
-  }
-
-  const activeThreatLevel = result?.threatLevel.toLowerCase() ?? analyzeResult?.threatLevel ?? null;
-  const threatColors = activeThreatLevel
-    ? THREAT_COLORS[activeThreatLevel] || THREAT_COLORS.safe
-    : null;
-  const activeThreatScore = result?.threatScore ?? analyzeResult?.threatScore ?? 0;
-  const activeUrl = result?.url ?? (analyzeResult ? `${analyzeResult.mode.toUpperCase()} scan` : "");
-
-  const vaccinesReady = vaccines !== null;
-
-  const currentMode = SCAN_MODES.find((m) => m.id === mode)!;
-  const canScanNow = mode === "website" || mode === "qr" ? url.trim().length > 0 : textInput.trim().length > 0;
+  const tl = result?.threatLevel.toLowerCase() ?? null;
+  const tc = tl ? (THREAT_COLORS[tl] ?? THREAT_COLORS.safe) : null;
 
   return (
     <div className="space-y-6">
@@ -355,90 +235,51 @@ export default function VaccinePage() {
             <div className="absolute inset-0 bg-shield/20 rounded-full blur-lg" />
           </div>
           <h1 className="text-2xl font-bold text-text-primary">
-            <span className="text-shield">Vaccine</span> Scanner
+            <span className="text-shield">Scam</span> Vaccine
           </h1>
         </div>
         <p className="text-text-secondary text-sm">
-          Scan websites, phone numbers, texts, and emails for scam threats. Vaccinate each breach for 1-hour protection.
+          Scan any website and generate a real-time protection script that neutralizes threats — phishing forms,
+          credential stealers, malware injections, clipboard hijackers — so you can visit the site safely.
         </p>
       </div>
 
-      {/* Notice — non-intrusive */}
-      <div className="flex items-start gap-2 px-3 py-2 rounded-lg bg-shield/5 border border-shield/15 text-xs text-text-muted">
-        <Info size={12} className="text-shield shrink-0 mt-0.5" />
-        Vaccines are client-side protection records stored on your device. We never modify or attack external sites.
+      {/* How it works — compact */}
+      <div className="glass-card p-4 flex flex-wrap gap-x-6 gap-y-2 text-xs text-text-muted items-center">
+        <Info size={13} className="text-shield shrink-0" />
+        <span><strong className="text-text-secondary">1.</strong> Enter a URL</span>
+        <span className="text-white/10">→</span>
+        <span><strong className="text-text-secondary">2.</strong> We scrape and analyze threats</span>
+        <span className="text-white/10">→</span>
+        <span><strong className="text-text-secondary">3.</strong> Choose protection modules</span>
+        <span className="text-white/10">→</span>
+        <span><strong className="text-text-secondary">4.</strong> Copy the vaccine script → paste in console or use extension</span>
       </div>
-
-      {/* Scan Mode Tabs */}
-      <div className="flex gap-1 p-1 rounded-xl bg-abyss/80 border border-border overflow-x-auto" data-tour="vaccine-modes">
-        {SCAN_MODES.map((m) => {
-          const Icon = m.icon;
-          return (
-            <button
-              key={m.id}
-              onClick={() => { setMode(m.id); setResult(null); setAnalyzeResult(null); setBreachCards([]); setError(null); }}
-              className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium transition-all whitespace-nowrap flex-1 justify-center ${
-                mode === m.id
-                  ? "bg-shield/10 text-shield border border-shield/20"
-                  : "text-text-muted hover:text-text-secondary"
-              }`}
-            >
-              <Icon size={13} />
-              <span className="hidden xs:inline sm:inline">{m.label}</span>
-            </button>
-          );
-        })}
-      </div>
-
-      {/* Mode description */}
-      <p className="text-xs text-text-muted -mt-2">{currentMode.desc}</p>
 
       {/* Scan Input */}
-      <div className="glass-card p-5" data-tour="vaccine-input">
+      <div className="glass-card p-5">
         <div className="flex flex-col sm:flex-row gap-3">
-          {(mode === "website" || mode === "qr") ? (
-            <div className="relative flex-1">
-              {mode === "website" ? (
-                <Globe size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-text-muted" />
-              ) : (
-                <QrCode size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-text-muted" />
-              )}
-              <input
-                ref={inputRef}
-                type="text"
-                value={url}
-                onChange={(e) => setUrl(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && !loading && handleScan()}
-                placeholder={currentMode.placeholder}
-                className="w-full pl-10 pr-4 py-3 rounded-xl bg-obsidian border border-border text-text-primary placeholder:text-text-muted text-sm font-mono focus:outline-none focus:border-shield/40 transition-all"
-                disabled={loading}
-              />
-            </div>
-          ) : (
-            <textarea
-              value={textInput}
-              onChange={(e) => setTextInput(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && e.ctrlKey && !loading && handleScan()}
-              placeholder={currentMode.placeholder}
-              rows={4}
-              className="flex-1 px-4 py-3 rounded-xl bg-obsidian border border-border text-text-primary placeholder:text-text-muted text-sm font-mono focus:outline-none focus:border-shield/40 transition-all resize-y min-h-[80px]"
+          <div className="relative flex-1">
+            <Globe size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-text-muted" />
+            <input
+              ref={inputRef}
+              type="text"
+              value={url}
+              onChange={e => setUrl(e.target.value)}
+              onKeyDown={e => e.key === "Enter" && !loading && handleScan()}
+              placeholder="Enter URL to vaccinate (e.g. suspicious-site.com)"
+              className="w-full pl-10 pr-4 py-3 rounded-xl bg-obsidian border border-border text-text-primary placeholder:text-text-muted text-sm font-mono focus:outline-none focus:border-shield/40 transition-all"
               disabled={loading}
             />
-          )}
+          </div>
           <button
             onClick={handleScan}
-            disabled={loading || !canScanNow}
-            data-tour="vaccine-scan-button"
-            className="w-full sm:w-auto px-5 py-3 rounded-xl bg-shield/15 border border-shield/25 text-shield font-semibold text-sm hover:bg-shield/20 disabled:opacity-40 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-2 shrink-0 sm:self-start"
+            disabled={loading || !url.trim()}
+            className="w-full sm:w-auto px-6 py-3 rounded-xl bg-shield/15 border border-shield/25 text-shield font-semibold text-sm hover:bg-shield/20 disabled:opacity-40 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-2 shrink-0"
           >
-            {loading
-              ? <><Loader2 size={15} className="animate-spin" />Scanning…</>
-              : <><Syringe size={15} />Scan</>}
+            {loading ? <><Loader2 size={15} className="animate-spin" />Scanning…</> : <><Syringe size={15} />Scan &amp; Vaccinate</>}
           </button>
         </div>
-        {(mode === "sms" || mode === "email" || mode === "phone") && (
-          <p className="text-[10px] text-text-muted mt-2">Press Ctrl+Enter to scan</p>
-        )}
       </div>
 
       {/* Error */}
@@ -456,15 +297,13 @@ export default function VaccinePage() {
             <Shield size={44} className="text-shield animate-pulse" />
             <div className="absolute inset-0 bg-shield/20 rounded-full blur-xl animate-pulse" />
           </div>
-          <div className="text-center">
-            <p className="text-text-primary font-medium">SYNERGOS Engine Active</p>
-            <p className="text-text-muted text-sm mt-1">Running 5-stage behavioral analysis…</p>
-          </div>
+          <p className="text-text-primary font-medium">Scraping &amp; analyzing website…</p>
+          <p className="text-text-muted text-xs">SYNERGOS multi-layer behavioral analysis active</p>
           <div className="flex flex-wrap justify-center gap-4 mt-1">
-            {["Graph Build", "Intent Field", "Game Theory", "Lyapunov", "Integration"].map((stage, i) => (
-              <div key={stage} className="flex flex-col items-center gap-1">
+            {["Scrape", "Detect", "Classify", "DNA", "Build Script"].map((s, i) => (
+              <div key={s} className="flex flex-col items-center gap-1">
                 <div className={`w-2 h-2 rounded-full ${i < 3 ? "bg-shield animate-pulse" : "bg-slate-mid"}`} />
-                <span className="text-[9px] font-mono text-text-muted">{stage}</span>
+                <span className="text-[9px] font-mono text-text-muted">{s}</span>
               </div>
             ))}
           </div>
@@ -472,180 +311,156 @@ export default function VaccinePage() {
       )}
 
       {/* Results */}
-      {(result || analyzeResult) && !loading && (
+      {result && !loading && (
         <div className="space-y-4">
 
-          {/* Summary Banner */}
-          <div className={`glass-card p-5 ${threatColors?.border} ${threatColors?.glow}`}>
+          {/* Summary */}
+          <div className={`glass-card p-5 ${tc?.border} ${tc?.glow}`}>
             <div className="flex items-center gap-4 flex-wrap">
-              {/* Score Ring */}
               <div className="relative w-14 h-14 shrink-0">
                 <svg viewBox="0 0 100 100" className="w-full h-full -rotate-90">
                   <circle cx="50" cy="50" r="42" fill="none" stroke="currentColor" strokeWidth="7" className="text-slate-deep" />
-                  <circle
-                    cx="50" cy="50" r="42" fill="none" strokeWidth="7"
+                  <circle cx="50" cy="50" r="42" fill="none" strokeWidth="7"
                     strokeDasharray={`${2 * Math.PI * 42}`}
-                    strokeDashoffset={`${2 * Math.PI * 42 * (1 - activeThreatScore / 100)}`}
-                    strokeLinecap="round"
-                    className={threatColors?.text || "text-safe"}
-                  />
+                    strokeDashoffset={`${2 * Math.PI * 42 * (1 - result.threatScore / 100)}`}
+                    strokeLinecap="round" className={tc?.text ?? "text-safe"} />
                 </svg>
                 <div className="absolute inset-0 flex items-center justify-center">
-                  <span className={`text-sm font-bold font-mono ${threatColors?.text}`}>{Math.round(activeThreatScore)}</span>
+                  <span className={`text-sm font-bold font-mono ${tc?.text}`}>{Math.round(result.threatScore)}</span>
                 </div>
               </div>
-
               <div className="flex-1 min-w-0">
-                <div className={`text-xs font-mono uppercase tracking-widest ${threatColors?.text} mb-0.5`}>
-                  {activeThreatLevel} threat
-                </div>
+                <div className={`text-xs font-mono uppercase tracking-widest ${tc?.text} mb-0.5`}>{tl} threat</div>
                 <div className="text-text-primary font-semibold text-sm">
-                  {breachCards.length === 0
-                    ? analyzeResult?.summary ?? "No breach points found"
-                    : `${breachCards.length} breach point${breachCards.length !== 1 ? "s" : ""} detected`}
+                  {breachCards.length === 0 ? "No threats found — site appears safe" : `${breachCards.length} threat${breachCards.length !== 1 ? "s" : ""} detected — vaccine ready`}
                 </div>
-                <div className="text-text-muted text-xs font-mono mt-0.5 truncate">{activeUrl}</div>
+                <div className="text-text-muted text-xs font-mono mt-0.5 truncate">{result.url}</div>
               </div>
-
               <div className="flex gap-3 shrink-0">
-                {result && <QuickStat icon={Clock} label="Latency" value={`${result.latencyMs}ms`} />}
-                {result && <QuickStat icon={Lock} label="Signed" value="HMAC" />}
-                {analyzeResult && <QuickStat icon={Clock} label="Time" value={`${analyzeResult.processingTimeMs}ms`} />}
+                <MiniStat icon={Clock} label="Latency" value={`${result.latencyMs}ms`} />
+                <MiniStat icon={Lock} label="Signed" value="HMAC" />
               </div>
             </div>
           </div>
 
-          {/* DNA + Immunity panels (vaccine-specific — only for analyze mode) */}
-          {analyzeResult?.dna && analyzeResult?.immunity && (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <DNAPanel dna={analyzeResult.dna} />
-              <ImmunityPanel immunity={analyzeResult.immunity} />
-            </div>
-          )}
-
-          {/* Pattern stats bar (analyze mode) */}
-          {analyzeResult && analyzeResult.totalPatternMatches > 0 && (
-            <div className="glass-card p-4 flex flex-wrap gap-4">
-              <div className="flex items-center gap-2">
-                <Microscope size={14} className="text-shield" />
-                <span className="text-xs text-text-muted">Pattern Engine</span>
-              </div>
-              <StatPill label="Pattern Matches" value={String(analyzeResult.totalPatternMatches)} color="shield" />
-              <StatPill label="Threat Groups" value={String(analyzeResult.uniqueGroupsHit)} color="caution" />
-              {analyzeResult.patternHits.slice(0, 3).map((h) => (
-                <StatPill
-                  key={h.group}
-                  label={h.group.replace(/_/g, " ")}
-                  value={`w${h.maxWeight}`}
-                  color={h.severity === "critical" ? "danger" : h.severity === "high" ? "caution" : "shield"}
-                />
+          {/* Breach Cards */}
+          {breachCards.length > 0 && (
+            <div className="space-y-3">
+              <h2 className="text-sm font-semibold text-text-primary">Threats Detected</h2>
+              {breachCards.map(card => (
+                <div key={card.id} className={`glass-card border-l-4 ${SEVERITY_LEFT[card.severity]} p-4`}>
+                  <div className="flex items-start gap-3">
+                    <div className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 mt-0.5 ${SEVERITY_BADGE[card.severity].split(" ")[0]}`}>
+                      <XCircle size={14} className={card.severity === "critical" ? "text-critical" : card.severity === "high" ? "text-danger" : card.severity === "medium" ? "text-caution" : "text-safe"} />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap mb-1">
+                        <span className="text-sm font-semibold text-text-primary">{card.title}</span>
+                        <span className={`text-[10px] font-mono px-1.5 py-0.5 rounded border ${SEVERITY_BADGE[card.severity]}`}>{card.severity}</span>
+                        <span className="text-[10px] font-mono text-text-muted px-1.5 py-0.5 rounded border border-border bg-obsidian/40">{card.category}</span>
+                      </div>
+                      <p className="text-xs text-text-secondary leading-relaxed">{card.description}</p>
+                    </div>
+                  </div>
+                </div>
               ))}
             </div>
           )}
 
-          {/* Breach Cards — the main section */}
-          {breachCards.length === 0 ? (
-            <div className="glass-card p-8 text-center">
-              <CheckCircle2 size={36} className="text-safe mx-auto mb-3" />
-              <p className="text-text-primary font-medium">No breach points detected</p>
-              <p className="text-text-muted text-sm mt-1">This site passed all security checks.</p>
-            </div>
-          ) : (
-            <div className="space-y-3" data-tour="breach-cards">
+          {/* Module Picker + Vaccinate Button */}
+          {breachCards.length > 0 && (
+            <div className="glass-card p-5 space-y-4 border border-shield/20">
               <div className="flex items-center justify-between">
-                <h2 className="text-sm font-semibold text-text-primary">Breach Points</h2>
-                {vaccinesReady && (
-                  <span className="text-xs text-text-muted">
-                    {vaccines!.filter((v) => breachCards.some((c) => c.id === v.id) && new Date(v.expiresAt).getTime() > Date.now()).length}
-                    /{breachCards.length} vaccinated
-                  </span>
-                )}
+                <h2 className="text-sm font-semibold text-text-primary flex items-center gap-2">
+                  <Syringe size={14} className="text-shield" /> Build Protection Script
+                </h2>
+                <button onClick={() => setShowModules(v => !v)} className="text-xs text-shield hover:underline flex items-center gap-1">
+                  {showModules ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
+                  {showModules ? "Hide" : "Choose"} modules
+                </button>
               </div>
 
-              {breachCards.map((card) => {
-                const vaccine = vaccinesReady
-                  ? vaccines!.find((v) => v.id === card.id) ?? null
-                  : null;
-                return (
-                  <BreachCardComponent
-                    key={card.id}
-                    card={card}
-                    vaccine={vaccine}
-                    onVaccinate={() => handleVaccinate(card)}
-                    onRevaccinate={() => handleRevaccinate(card)}
-                  />
-                );
-              })}
+              {showModules && (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  {ALL_MODULES.map(m => (
+                    <label key={m.id} className={`flex items-start gap-2.5 p-3 rounded-lg border cursor-pointer transition-all ${
+                      enabledModules.has(m.id) ? "bg-shield/5 border-shield/25" : "bg-obsidian border-border hover:border-white/10"
+                    }`}>
+                      <input
+                        type="checkbox"
+                        checked={enabledModules.has(m.id)}
+                        onChange={() => setEnabledModules(prev => {
+                          const next = new Set(prev);
+                          next.has(m.id) ? next.delete(m.id) : next.add(m.id);
+                          return next;
+                        })}
+                        className="mt-0.5 accent-shield"
+                      />
+                      <div>
+                        <div className="text-xs font-semibold text-text-primary">{m.name}</div>
+                        <div className="text-[10px] text-text-muted">{m.desc}</div>
+                      </div>
+                    </label>
+                  ))}
+                </div>
+              )}
+
+              <p className="text-xs text-text-muted">
+                {enabledModules.size} of {ALL_MODULES.length} protection modules selected.
+                The script will intercept, block, and neutralize the threats found above.
+              </p>
+
+              <button
+                onClick={handleVaccinate}
+                className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-shield hover:bg-shield/90 text-white font-semibold text-sm transition-colors"
+              >
+                <Syringe size={16} /> Generate Vaccine ({enabledModules.size} modules)
+              </button>
             </div>
           )}
 
-          {/* SYNERGOS — collapsed by default (website scans only) */}
-          {result?.synergosAnalysis && (
+          {/* SYNERGOS (collapsed) */}
+          {result.synergosAnalysis && (
             <div className="glass-card overflow-hidden">
-              <button
-                onClick={() => setShowSynergos((v) => !v)}
-                className="w-full flex items-center gap-3 p-4 text-left hover:bg-slate-deep/20 transition-colors"
-              >
+              <button onClick={() => setShowSynergos(v => !v)}
+                className="w-full flex items-center gap-3 p-4 text-left hover:bg-slate-deep/20 transition-colors">
                 <Brain size={16} className="text-shield shrink-0" />
                 <span className="text-text-primary text-sm font-medium flex-1">SYNERGOS Behavioral Analysis</span>
                 <span className={`text-xs font-mono px-2 py-0.5 rounded-full border ${
                   result.synergosAnalysis.verdict === "BLOCK" ? "bg-danger/10 text-danger border-danger/20"
-                  : result.synergosAnalysis.verdict === "WARN"  ? "bg-caution/10 text-caution border-caution/20"
+                  : result.synergosAnalysis.verdict === "WARN" ? "bg-caution/10 text-caution border-caution/20"
                   : "bg-safe/10 text-safe border-safe/20"
-                }`}>
-                  {result.synergosAnalysis.verdict} · {Math.round(result.synergosAnalysis.confidence * 100)}%
-                </span>
+                }`}>{result.synergosAnalysis.verdict} · {Math.round(result.synergosAnalysis.confidence * 100)}%</span>
                 {showSynergos ? <ChevronUp size={15} className="text-text-muted" /> : <ChevronDown size={15} className="text-text-muted" />}
               </button>
-
-              {showSynergos && result?.synergosAnalysis && (
-                <div className="px-5 pb-5 space-y-4">
-                  {/* Defense list */}
+              {showSynergos && (
+                <div className="px-5 pb-5 space-y-3">
                   {result.synergosAnalysis.recommendedDefense.length > 0 && (
                     <div className="space-y-1.5">
                       <p className="text-xs font-medium text-text-muted uppercase tracking-wider">Recommended Defenses</p>
                       {result.synergosAnalysis.recommendedDefense.map((d, i) => (
-                        <div key={i} className="flex items-start gap-2 text-xs text-text-secondary">
-                          <CheckCircle2 size={12} className="text-safe shrink-0 mt-0.5" />
-                          {d}
-                        </div>
+                        <div key={i} className="flex items-start gap-2 text-xs text-text-secondary"><CheckCircle2 size={12} className="text-safe shrink-0 mt-0.5" />{d}</div>
                       ))}
                     </div>
                   )}
-
-                  {/* Attack prediction */}
                   {result.synergosAnalysis.nextAttackPrediction.tactics.length > 0 && (
                     <div>
-                      <div className="flex items-center gap-2 mb-2">
-                        <TrendingUp size={13} className="text-caution" />
-                        <span className="text-xs font-medium text-text-muted uppercase tracking-wider">Predicted Attack Vectors</span>
-                        <span className="text-xs font-mono text-text-muted ml-auto">
-                          {Math.round(result.synergosAnalysis.nextAttackPrediction.likelihood * 100)}% likelihood
-                        </span>
-                      </div>
+                      <p className="text-xs font-medium text-text-muted uppercase tracking-wider mb-2">Predicted Attack Vectors — {Math.round(result.synergosAnalysis.nextAttackPrediction.likelihood * 100)}% likelihood</p>
                       <div className="flex flex-wrap gap-2">
-                        {result.synergosAnalysis.nextAttackPrediction.tactics.map((t) => (
-                          <span key={t} className="px-2 py-0.5 rounded-lg bg-caution/10 border border-caution/15 text-caution text-xs font-mono">
-                            {t.replace(/_/g, " ")}
-                          </span>
+                        {result.synergosAnalysis.nextAttackPrediction.tactics.map(t => (
+                          <span key={t} className="px-2 py-0.5 rounded-lg bg-caution/10 border border-caution/15 text-caution text-xs font-mono">{t.replace(/_/g, " ")}</span>
                         ))}
                       </div>
                     </div>
                   )}
-
-                  {/* Analysis pillars mini-grid */}
                   <div className="grid grid-cols-3 gap-2 pt-1">
                     {[
-                      { icon: Network,     label: "Graph Laplacian" },
-                      { icon: Target,      label: "Anomaly Detection" },
-                      { icon: Activity,    label: "Lyapunov" },
-                      { icon: Fingerprint, label: "Spectral" },
-                      { icon: Thermometer, label: "Free Energy" },
-                      { icon: Dna,         label: "Immune Memory" },
+                      { icon: Network, label: "Graph Laplacian" }, { icon: Target, label: "Anomaly Detection" },
+                      { icon: Activity, label: "Lyapunov" }, { icon: Fingerprint, label: "Spectral" },
+                      { icon: Thermometer, label: "Free Energy" }, { icon: Dna, label: "Immune Memory" },
                     ].map(({ icon: Icon, label }) => (
                       <div key={label} className="flex items-center gap-1.5 px-2 py-1.5 rounded-lg bg-obsidian border border-border">
-                        <Icon size={11} className="text-shield shrink-0" />
-                        <span className="text-[10px] text-text-muted">{label}</span>
+                        <Icon size={11} className="text-shield shrink-0" /><span className="text-[10px] text-text-muted">{label}</span>
                       </div>
                     ))}
                   </div>
@@ -654,282 +469,133 @@ export default function VaccinePage() {
             </div>
           )}
 
-          {/* Signature footer */}
+          {/* Bookmarklet */}
+          <div className="glass-card p-4">
+            <button onClick={() => setShowBookmarklet(v => !v)} className="w-full flex items-center gap-2 text-left">
+              <Bookmark size={14} className="text-shield" />
+              <span className="text-sm font-medium text-text-primary flex-1">One-Click Bookmarklet</span>
+              {showBookmarklet ? <ChevronUp size={13} className="text-text-muted" /> : <ChevronDown size={13} className="text-text-muted" />}
+            </button>
+            {showBookmarklet && (
+              <div className="mt-3 space-y-3">
+                <p className="text-xs text-text-secondary">Drag the button below to your bookmarks bar. Then click it on any suspicious page to instantly apply ScamShieldy&apos;s vaccine.</p>
+                <div className="flex items-center gap-3">
+                  <a
+                    href={buildBookmarklet(result.url)}
+                    className="px-4 py-2 rounded-lg bg-shield text-white font-semibold text-xs cursor-grab active:cursor-grabbing no-underline"
+                    onClick={e => e.preventDefault()}
+                    title="Drag this to your bookmarks bar"
+                  >
+                    🛡️ ScamShieldy Vaccine
+                  </a>
+                  <span className="text-[10px] text-text-muted">← Drag to bookmarks bar</span>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Signature */}
           <div className="flex items-center gap-1.5 px-1 text-text-muted">
             <Lock size={10} />
             <span className="text-[10px] font-mono">
-              {result
-                ? `HMAC-SHA256 signed · ${new Date(result.signedAt).toLocaleTimeString()} · payload verified`
-                : `${currentMode.label} scan · ${new Date().toLocaleTimeString()} · local analysis`}
+              HMAC-SHA256 signed · {new Date(result.signedAt).toLocaleTimeString()} · payload verified
             </span>
           </div>
         </div>
       )}
 
-      {/* Protection Script Modal */}
-      {scriptModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-void/80 backdrop-blur-sm">
-          <div className="glass-card w-full max-w-2xl max-h-[90vh] flex flex-col border border-shield/30">
-            {/* Header */}
-            <div className="flex items-center gap-3 p-5 border-b border-white/5">
-              <div className="w-9 h-9 rounded-lg bg-shield/10 border border-shield/20 flex items-center justify-center">
-                <ShieldCheck size={18} className="text-shield" />
-              </div>
-              <div className="flex-1">
-                <h2 className="text-base font-semibold text-text-primary">Vaccine Script Ready</h2>
-                <p className="text-xs text-text-muted font-mono truncate">{scriptModal.url}</p>
-              </div>
-              <button onClick={() => setScriptModal(null)} className="text-text-muted hover:text-text-primary transition-colors text-xl leading-none">✕</button>
-            </div>
-
-            {/* Modules list */}
-            <div className="px-5 pt-4 pb-2 space-y-2">
-              <p className="text-xs text-text-muted uppercase tracking-wider font-mono">Active Protection Modules ({scriptModal.modules.length})</p>
-              <div className="flex flex-wrap gap-2">
-                {scriptModal.modules.map((m) => (
-                  <span key={m} className="text-[11px] font-mono px-2 py-1 rounded-lg bg-shield/10 border border-shield/20 text-shield flex items-center gap-1">
-                    <ShieldCheck size={10} />{m}
-                  </span>
-                ))}
-              </div>
-            </div>
-
-            {/* How to use */}
-            <div className="mx-5 mb-3 p-3 rounded-lg bg-caution/5 border border-caution/20 space-y-2">
-              <p className="text-xs font-semibold text-caution flex items-center gap-1.5">
-                <Terminal size={12} /> How to apply this vaccine:
-              </p>
-              <ol className="text-xs text-text-secondary space-y-1 list-decimal list-inside">
-                <li>Copy the script below</li>
-                <li>Open <a href={scriptModal.url} target="_blank" rel="noopener noreferrer" className="text-shield hover:underline">{scriptModal.url} <ExternalLink size={10} className="inline" /></a> in a new tab</li>
-                <li>Press <kbd className="px-1 py-0.5 rounded bg-obsidian border border-border text-[10px] font-mono">F12</kbd> → Console tab → Paste → Enter</li>
-                <li className="text-text-muted">Or install the ScamShieldy Extension for automatic protection</li>
-              </ol>
-            </div>
-
-            {/* Script box */}
-            <div className="flex-1 overflow-auto mx-5 mb-3 relative">
-              <pre className="text-[10px] font-mono text-text-secondary bg-obsidian border border-border rounded-lg p-3 whitespace-pre-wrap overflow-auto max-h-64">
-                {scriptModal.script}
-              </pre>
-            </div>
-
-            {/* Actions */}
-            <div className="p-5 pt-0 flex gap-3">
-              <button
-                onClick={() => {
-                  navigator.clipboard.writeText(scriptModal.script).then(() => {
-                    setScriptModal((s) => s ? { ...s, copied: true } : null);
-                    setTimeout(() => setScriptModal((s) => s ? { ...s, copied: false } : null), 2500);
-                  });
-                }}
-                className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl bg-shield/15 border border-shield/30 text-shield font-semibold text-sm hover:bg-shield/25 transition-colors"
-              >
-                {scriptModal.copied ? <><Check size={15} />Copied!</> : <><Copy size={15} />Copy Script</>}
-              </button>
-              <a
-                href={scriptModal.url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-obsidian border border-border text-text-secondary font-semibold text-sm hover:border-shield/30 transition-colors"
-              >
-                <ExternalLink size={15} />
-                Open Site
-              </a>
-            </div>
-          </div>
-        </div>
-      )}
-
       {/* Empty state */}
-      {!result && !analyzeResult && !loading && !error && (
+      {!result && !loading && !error && (
         <div className="glass-card p-8 text-center">
-          <Syringe size={40} className="text-slate-mid mx-auto mb-4" />
-          <h3 className="text-text-secondary font-medium mb-2">
-            {currentMode.id === "website" && "Enter a URL to scan for breach points"}
-            {currentMode.id === "qr"      && "Paste the URL from your QR code to scan"}
-            {currentMode.id === "phone"   && "Paste a phone number to check for fraud risk"}
-            {currentMode.id === "sms"     && "Paste a suspicious text message to analyze"}
-            {currentMode.id === "email"   && "Paste an email body or headers to analyze"}
-          </h3>
-          <p className="text-text-muted text-sm max-w-md mx-auto mb-6">{currentMode.desc}</p>
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 max-w-xl mx-auto">
-            {(currentMode.id === "website" || currentMode.id === "qr") ? [
-              { icon: Network,     label: "Graph Physics",     desc: "Field dependency diffusion" },
-              { icon: Target,      label: "Anomaly Detection", desc: "Payoff-based detection" },
-              { icon: Activity,    label: "Chaos Analysis",    desc: "Lyapunov sensitivity" },
-              { icon: Fingerprint, label: "Spectral IDs",      desc: "Eigenvalue signatures" },
-              { icon: Thermometer, label: "Thermodynamics",    desc: "Free energy F = U − TS" },
-              { icon: Dna,         label: "Immune Memory",     desc: "Variant matching" },
-            ].map(({ icon: Icon, label, desc }) => (
+          <Shield size={40} className="text-slate-mid mx-auto mb-4" />
+          <h3 className="text-text-secondary font-medium mb-2">Enter a URL to generate a protection vaccine</h3>
+          <p className="text-text-muted text-sm max-w-md mx-auto mb-6">
+            We scrape the website, detect phishing forms, malware scripts, credential stealers, and fake urgency elements — then build a JavaScript vaccine that neutralizes them when you visit.
+          </p>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 max-w-2xl mx-auto">
+            {[
+              { icon: Shield,       label: "Blocks phishing forms" },
+              { icon: Lock,         label: "Protects credentials" },
+              { icon: XCircle,      label: "Removes hidden iframes" },
+              { icon: AlertTriangle, label: "Kills fake urgency" },
+            ].map(({ icon: Icon, label }) => (
               <div key={label} className="p-3 rounded-xl bg-obsidian/50 border border-border/50 text-left">
                 <Icon size={14} className="text-shield mb-1.5" />
-                <div className="text-text-secondary text-xs font-medium">{label}</div>
-                <div className="text-text-muted text-[10px]">{desc}</div>
-              </div>
-            )) : [
-              { icon: Brain,        label: "Deception Tactics",   desc: "Manipulation pattern matching" },
-              { icon: AlertTriangle,label: "Authority Faking",    desc: "Fake official language detection" },
-              { icon: Zap,          label: "Urgency Signals",     desc: "False time-pressure detection" },
-              { icon: Phone,        label: "Phone Risk Scoring",  desc: "Premium-rate & scam area codes" },
-              { icon: Activity,     label: "Emotional Exploit",   desc: "Fear, greed, empathy targeting" },
-              { icon: Lock,         label: "Isolation Tactics",   desc: "Secrecy demand detection" },
-            ].map(({ icon: Icon, label, desc }) => (
-              <div key={label} className="p-3 rounded-xl bg-obsidian/50 border border-border/50 text-left">
-                <Icon size={14} className="text-shield mb-1.5" />
-                <div className="text-text-secondary text-xs font-medium">{label}</div>
-                <div className="text-text-muted text-[10px]">{desc}</div>
+                <div className="text-text-muted text-[10px]">{label}</div>
               </div>
             ))}
           </div>
         </div>
       )}
-    </div>
-  );
-}
 
-// ---------------------------------------------------------------------------
-// BreachCard component
-// ---------------------------------------------------------------------------
-
-function BreachCardComponent({
-  card,
-  vaccine,
-  onVaccinate,
-  onRevaccinate,
-}: {
-  card: BreachCard;
-  vaccine: VaccineRecord | null;
-  onVaccinate: () => void;
-  onRevaccinate: () => void;
-}) {
-  const [showDetail, setShowDetail] = useState(false);
-  const isExpired = vaccine ? new Date(vaccine.expiresAt).getTime() <= Date.now() : false;
-  const isActive = vaccine !== null && !isExpired;
-
-  return (
-    <div className={`glass-card border-l-4 ${SEVERITY_LEFT[card.severity]} overflow-hidden transition-all ${
-      isActive ? "opacity-80" : ""
-    }`}>
-      <div className="p-4">
-        <div className="flex items-start gap-3">
-          {/* Severity icon */}
-          <div className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 mt-0.5 ${
-            isActive ? "bg-safe/10" : SEVERITY_COLORS[card.severity].split(" ")[0]
-          }`}>
-            {isActive
-              ? <ShieldCheck size={14} className="text-safe" />
-              : <XCircle size={14} className={`text-${card.severity === "critical" ? "critical" : card.severity === "high" ? "danger" : card.severity === "medium" ? "caution" : "safe"}`} />
-            }
-          </div>
-
-          {/* Content */}
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2 flex-wrap mb-1">
-              <span className="text-sm font-semibold text-text-primary">{card.title}</span>
-              <span className={`text-[10px] font-mono px-1.5 py-0.5 rounded border ${SEVERITY_COLORS[card.severity]}`}>
-                {card.severity}
-              </span>
-              <span className="text-[10px] font-mono text-text-muted px-1.5 py-0.5 rounded border border-border bg-obsidian/40">
-                {card.category}
-              </span>
-              <span className={`text-[10px] font-mono px-1.5 py-0.5 rounded border ${
-                card.ruleType === "block" ? "bg-danger/10 text-danger border-danger/20"
-                : card.ruleType === "warn" ? "bg-caution/10 text-caution border-caution/20"
-                : "bg-shield/10 text-shield border-shield/20"
-              }`}>
-                {card.ruleType}
-              </span>
-            </div>
-            <p className="text-xs text-text-secondary leading-relaxed">{card.description}</p>
-
-            {/* Detail toggle */}
-            {(card.selector || card.message) && (
-              <button
-                onClick={() => setShowDetail((v) => !v)}
-                className="flex items-center gap-1 mt-1.5 text-[10px] text-text-muted hover:text-text-secondary transition-colors"
-              >
-                {showDetail ? <ChevronUp size={10} /> : <ChevronDown size={10} />}
-                {showDetail ? "Less detail" : "More detail"}
-              </button>
-            )}
-            {showDetail && (card.selector || card.message) && (
-              <div className="mt-2 px-2 py-1.5 rounded bg-obsidian border border-border/50 text-[10px] font-mono text-text-muted space-y-0.5">
-                {card.selector && <div><span className="text-shield">selector:</span> {card.selector}</div>}
-                {card.message && <div><span className="text-shield">message:</span> {card.message}</div>}
+      {/* Script Modal */}
+      {scriptModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-void/80 backdrop-blur-sm">
+          <div className="glass-card w-full max-w-2xl max-h-[90vh] flex flex-col border border-shield/30">
+            <div className="flex items-center gap-3 p-5 border-b border-white/5">
+              <div className="w-9 h-9 rounded-lg bg-shield/10 border border-shield/20 flex items-center justify-center">
+                <ShieldCheck size={18} className="text-shield" />
               </div>
-            )}
-          </div>
+              <div className="flex-1">
+                <h2 className="text-base font-semibold text-text-primary">Vaccine Ready — {scriptModal.modules.length} modules active</h2>
+                <p className="text-xs text-text-muted font-mono truncate">{scriptModal.url}</p>
+              </div>
+              <button onClick={() => setScriptModal(null)} className="text-text-muted hover:text-text-primary text-xl">✕</button>
+            </div>
 
-          {/* Right: Vaccinate button or status */}
-          <div className="shrink-0 ml-2">
-            {isActive ? (
-              <VaccineStatus expiresAt={vaccine!.expiresAt} onExpire={() => {/* re-render handled by timer */}} />
-            ) : isExpired && vaccine ? (
+            <div className="px-5 pt-4 pb-2">
+              <div className="flex flex-wrap gap-1.5">
+                {scriptModal.modules.map(m => (
+                  <span key={m} className="text-[10px] font-mono px-2 py-0.5 rounded-lg bg-shield/10 border border-shield/20 text-shield">{m}</span>
+                ))}
+              </div>
+            </div>
+
+            <div className="mx-5 mb-3 p-3 rounded-lg bg-caution/5 border border-caution/20 space-y-1.5">
+              <p className="text-xs font-semibold text-caution flex items-center gap-1.5"><Terminal size={12} />How to apply:</p>
+              <ol className="text-xs text-text-secondary space-y-0.5 list-decimal list-inside">
+                <li>Copy the script</li>
+                <li>Open the site → Press <kbd className="px-1 py-0.5 rounded bg-obsidian border border-border text-[10px] font-mono">F12</kbd> → <strong>Console</strong> tab</li>
+                <li>Paste → <kbd className="px-1 py-0.5 rounded bg-obsidian border border-border text-[10px] font-mono">Enter</kbd></li>
+              </ol>
+              <p className="text-[10px] text-text-muted">Or install the ScamShieldy Extension for automatic protection on every page.</p>
+            </div>
+
+            <div className="flex-1 overflow-auto mx-5 mb-3">
+              <pre className="text-[10px] font-mono text-text-secondary bg-obsidian border border-border rounded-lg p-3 whitespace-pre-wrap overflow-auto max-h-56">
+                {scriptModal.script}
+              </pre>
+            </div>
+
+            <div className="p-5 pt-0 flex gap-3">
               <button
-                onClick={onRevaccinate}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-shield/30 bg-shield/5 text-shield text-xs font-semibold hover:bg-shield/10 transition-colors"
+                onClick={() => {
+                  navigator.clipboard.writeText(scriptModal.script).then(() => {
+                    setScriptModal(s => s ? { ...s, copied: true } : null);
+                    setTimeout(() => setScriptModal(s => s ? { ...s, copied: false } : null), 2500);
+                  });
+                }}
+                className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl bg-shield/15 border border-shield/30 text-shield font-semibold text-sm hover:bg-shield/25 transition-colors"
               >
-                <RefreshCw size={11} />
-                Re-vaccinate
+                {scriptModal.copied ? <><Check size={15} />Copied!</> : <><Copy size={15} />Copy Vaccine Script</>}
               </button>
-            ) : (
-              <button
-                onClick={onVaccinate}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-shield/30 bg-shield/10 text-shield text-xs font-semibold hover:bg-shield/20 transition-colors"
-              >
-                <Syringe size={11} />
-                Vaccinate
-              </button>
-            )}
+              <a href={scriptModal.url} target="_blank" rel="noopener noreferrer"
+                className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-obsidian border border-border text-text-secondary text-sm hover:border-shield/30 transition-colors">
+                <ExternalLink size={15} />Open Site
+              </a>
+            </div>
           </div>
         </div>
-      </div>
+      )}
     </div>
   );
 }
 
 // ---------------------------------------------------------------------------
-// VaccineStatus — countdown timer inside vaccinated card
+// Small components
 // ---------------------------------------------------------------------------
 
-function VaccineStatus({ expiresAt, onExpire }: { expiresAt: string; onExpire: () => void }) {
-  const [remaining, setRemaining] = useState(() => new Date(expiresAt).getTime() - Date.now());
-
-  useEffect(() => {
-    if (remaining <= 0) { onExpire(); return; }
-    const id = setInterval(() => {
-      const r = new Date(expiresAt).getTime() - Date.now();
-      setRemaining(r);
-      if (r <= 0) { clearInterval(id); onExpire(); }
-    }, 1000);
-    return () => clearInterval(id);
-  }, [expiresAt, onExpire, remaining]);
-
-  if (remaining <= 0) return null;
-
-  const mins = Math.floor(remaining / 60000);
-  const secs = Math.floor((remaining % 60000) / 1000);
-
-  return (
-    <div className="flex flex-col items-center gap-1 px-3 py-1.5 rounded-lg bg-safe/5 border border-safe/20">
-      <div className="flex items-center gap-1">
-        <ShieldCheck size={12} className="text-safe" />
-        <span className="text-xs font-semibold text-safe">Protected</span>
-      </div>
-      <div className="flex items-center gap-1 text-[10px] font-mono text-safe/70">
-        <Clock size={9} />
-        {mins}m {String(secs).padStart(2, "0")}s
-      </div>
-    </div>
-  );
-}
-
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
-
-function QuickStat({ icon: Icon, label, value }: { icon: React.ComponentType<{ size?: number; className?: string }>; label: string; value: string }) {
+function MiniStat({ icon: Icon, label, value }: { icon: React.ComponentType<{ size?: number; className?: string }>; label: string; value: string }) {
   return (
     <div className="flex flex-col items-center gap-0.5">
       <Icon size={12} className="text-text-muted" />
@@ -938,170 +604,3 @@ function QuickStat({ icon: Icon, label, value }: { icon: React.ComponentType<{ s
     </div>
   );
 }
-
-// ---------------------------------------------------------------------------
-// DNA Panel — visualizes the 12-dimension threat fingerprint
-// ---------------------------------------------------------------------------
-function DNAPanel({ dna }: { dna: VaccineDNAResult }) {
-  const mutationColors: Record<string, string> = {
-    NOVEL:     "bg-shield/10 text-shield border-shield/20",
-    VARIANT:   "bg-caution/10 text-caution border-caution/20",
-    CLONE:     "bg-danger/10 text-danger border-danger/20",
-    EVOLVED:   "bg-caution/10 text-caution border-caution/20",
-    SYNTHETIC: "bg-critical/10 text-critical border-critical/20",
-  };
-
-  return (
-    <div className="glass-card p-4 space-y-3">
-      <div className="flex items-center gap-2">
-        <Dna size={15} className="text-shield" />
-        <span className="text-sm font-semibold text-text-primary">Threat DNA</span>
-        <span className={`ml-auto text-[10px] font-mono px-2 py-0.5 rounded-full border ${mutationColors[dna.mutationClass] ?? mutationColors.NOVEL}`}>
-          {dna.mutationClass}
-        </span>
-      </div>
-
-      {/* Hex fingerprint */}
-      <div className="font-mono text-xs text-text-muted bg-obsidian border border-border rounded-lg px-3 py-2 tracking-widest text-center select-all">
-        {dna.hex.match(/.{1,4}/g)?.join(" ")}
-      </div>
-
-      {/* Dimension bars */}
-      <div className="space-y-1.5">
-        {dna.dimensions.filter(d => d.intensity > 0).sort((a, b) => b.intensity - a.intensity).slice(0, 6).map((dim) => (
-          <div key={dim.name} className="flex items-center gap-2">
-            <span className="text-[10px] font-mono text-text-muted w-20 shrink-0 truncate">{dim.label}</span>
-            <div className="flex-1 h-2 rounded-full bg-obsidian overflow-hidden">
-              <div
-                className={`h-full rounded-full transition-all ${
-                  dim.intensity >= 12 ? "bg-critical" :
-                  dim.intensity >= 8  ? "bg-danger" :
-                  dim.intensity >= 5  ? "bg-caution" :
-                  "bg-shield"
-                }`}
-                style={{ width: `${(dim.intensity / 15) * 100}%` }}
-              />
-            </div>
-            <span className="text-[10px] font-mono text-text-muted w-4 text-right">{dim.intensity}</span>
-          </div>
-        ))}
-      </div>
-
-      {/* Segment blocks */}
-      <div className="flex gap-0.5 flex-wrap">
-        {dna.hex.split("").map((char, i) => (
-          <div
-            key={i}
-            className={`w-5 h-5 rounded flex items-center justify-center text-[9px] font-mono font-bold ${dnaSegmentColor(parseInt(char, 16))}`}
-            title={dna.dimensions[i]?.label}
-          >
-            {char}
-          </div>
-        ))}
-      </div>
-
-      <p className="text-[10px] text-text-muted">{dna.mutationLabel} · dominant strand: <span className="text-shield">{dna.dominantStrand.replace(/_/g, " ")}</span></p>
-    </div>
-  );
-}
-
-// ---------------------------------------------------------------------------
-// Immunity Panel — shows immune strength, antibodies, decay rate
-// ---------------------------------------------------------------------------
-function ImmunityPanel({ immunity }: { immunity: VaccineImmunityResult }) {
-  const boosterIn = immunity.boosterDueAt - Date.now();
-  const boosterHours = Math.max(0, Math.round(boosterIn / (1000 * 60 * 60)));
-  const boosterDays = Math.floor(boosterHours / 24);
-  const boosterLabel = boosterDays > 0 ? `${boosterDays}d ${boosterHours % 24}h` : `${boosterHours}h`;
-
-  const strengthColor =
-    immunity.strength >= 80 ? "text-safe" :
-    immunity.strength >= 50 ? "text-caution" :
-    "text-danger";
-
-  const tierCls = tierColor(immunity.tier as Parameters<typeof tierColor>[0]);
-
-  return (
-    <div className="glass-card p-4 space-y-3">
-      <div className="flex items-center gap-2">
-        <FlaskConical size={15} className="text-shield" />
-        <span className="text-sm font-semibold text-text-primary">Immunity Profile</span>
-        <span className={`ml-auto text-[10px] font-mono ${tierCls}`}>{immunity.tier}</span>
-      </div>
-
-      {/* Strength meter */}
-      <div className="space-y-1">
-        <div className="flex justify-between items-center">
-          <span className="text-[10px] text-text-muted">Immune Strength</span>
-          <span className={`text-sm font-bold font-mono ${strengthColor}`}>{immunity.strength}%</span>
-        </div>
-        <div className="h-3 rounded-full bg-obsidian overflow-hidden">
-          <div
-            className={`h-full rounded-full transition-all ${
-              immunity.strength >= 80 ? "bg-safe" :
-              immunity.strength >= 50 ? "bg-caution" :
-              "bg-danger"
-            }`}
-            style={{ width: `${immunity.strength}%` }}
-          />
-        </div>
-        <p className="text-[10px] text-text-muted">{immunity.tierLabel}</p>
-      </div>
-
-      {/* Stats row */}
-      <div className="grid grid-cols-3 gap-2">
-        <div className="text-center p-2 rounded-lg bg-obsidian border border-border">
-          <div className="text-xs font-bold font-mono text-shield">{immunity.peakStrength}%</div>
-          <div className="text-[9px] text-text-muted">Peak</div>
-        </div>
-        <div className="text-center p-2 rounded-lg bg-obsidian border border-border">
-          <div className="text-xs font-bold font-mono text-caution">{boosterLabel}</div>
-          <div className="text-[9px] text-text-muted">Booster In</div>
-        </div>
-        <div className="text-center p-2 rounded-lg bg-obsidian border border-border">
-          <div className="text-xs font-bold font-mono text-text-primary">{immunity.exposureCount}×</div>
-          <div className="text-[9px] text-text-muted">Exposures</div>
-        </div>
-      </div>
-
-      {/* Antibodies */}
-      {immunity.antibodies.length > 0 && (
-        <div className="space-y-1">
-          <p className="text-[10px] font-mono text-text-muted uppercase tracking-wider flex items-center gap-1">
-            <GitBranch size={9} /> Antibodies Generated
-          </p>
-          {immunity.antibodies.map((ab) => (
-            <div key={ab.dimension} className="flex items-center gap-2">
-              <span className="text-[10px] text-text-secondary w-28 shrink-0 truncate">{ab.targetLabel}</span>
-              <div className="flex-1 h-1.5 rounded-full bg-obsidian overflow-hidden">
-                <div className="h-full bg-shield/70 rounded-full" style={{ width: `${ab.strength}%` }} />
-              </div>
-              <span className="text-[10px] font-mono text-text-muted">{ab.strength}%</span>
-            </div>
-          ))}
-        </div>
-      )}
-
-      <p className="text-[10px] text-text-muted flex items-center gap-1">
-        <Waves size={9} /> {immunity.decayRateLabel}
-      </p>
-    </div>
-  );
-}
-
-// ---------------------------------------------------------------------------
-// StatPill
-// ---------------------------------------------------------------------------
-function StatPill({ label, value, color }: { label: string; value: string; color: "shield" | "caution" | "danger" }) {
-  const cls = {
-    shield: "bg-shield/10 text-shield border-shield/20",
-    caution: "bg-caution/10 text-caution border-caution/20",
-    danger: "bg-danger/10 text-danger border-danger/20",
-  }[color];
-  return (
-    <span className={`text-[10px] font-mono px-2 py-1 rounded-full border ${cls}`}>
-      {label}: <strong>{value}</strong>
-    </span>
-  );
-}
-
