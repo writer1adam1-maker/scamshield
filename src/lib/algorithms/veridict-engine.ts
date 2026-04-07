@@ -32,64 +32,25 @@ import { analyzeConversationArc } from './conversation-arc';
 // Trusted domains — never flag these as scams even if URL contains scam words
 // These are major legitimate sites; the pattern engine should not score them.
 // ---------------------------------------------------------------------------
-// Trusted TLD suffixes — entire government/education/military TLDs are safe
-const TRUSTED_TLD_PATTERNS = [
-  /\.gov$/,                    // US federal (.gov)
-  /\.gov\.[a-z]{2}$/,         // Other countries (.gov.uk, .gov.au, .gov.sg, .gov.my, .gov.ie)
-  /\.state\.[a-z]{2}\.us$/,   // US state sites (.state.mn.us, .state.or.us)
-  /\.edu$/,                    // Universities (.edu)
-  /\.edu\.[a-z]{2}$/,         // Intl universities (.edu.au)
-  /\.mil$/,                    // US military
-  /\.europa\.eu$/,             // EU institutions
-  /\.int$/,                    // International orgs (WHO, UNESCO)
-  /\.ac\.[a-z]{2}$/,          // Academic (.ac.uk, .ac.jp)
-  /\.gc\.ca$/,                 // Canadian government
-  /\.gouv\.fr$/,               // French government
-  /\.gob\.[a-z]{2}$/,         // Spanish/Latin gov (.gob.mx, .gob.es)
-  /\.go\.[a-z]{2}$/,          // Other gov (.go.jp, .go.kr)
-];
-
-// Major known-safe domains
-const TRUSTED_DOMAINS = new Set([
-  'google.com', 'youtube.com', 'facebook.com', 'twitter.com', 'x.com',
-  'instagram.com', 'linkedin.com', 'reddit.com', 'wikipedia.org',
-  'amazon.com', 'apple.com', 'microsoft.com', 'github.com',
-  'stackoverflow.com', 'netflix.com', 'spotify.com', 'paypal.com',
-  'ebay.com', 'yahoo.com', 'bing.com', 'bbc.com', 'cnn.com',
-  'nytimes.com', 'theguardian.com', 'reuters.com', 'apnews.com',
-  'forbes.com', 'bloomberg.com', 'washingtonpost.com',
-  'cloudflare.com', 'outlook.com', 'live.com',
-  'zoom.us', 'slack.com', 'discord.com', 'twitch.tv',
-  'tiktok.com', 'pinterest.com', 'whatsapp.com', 'signal.org',
-  'dropbox.com', 'notion.so', 'stripe.com', 'paddle.com',
-  'vercel.com', 'netlify.com', 'supabase.com', 'heroku.com',
-  'wordpress.com', 'medium.com', 'substack.com',
-  'avg.com', 'norton.com', 'kaspersky.com', 'malwarebytes.com',
-  'wiktionary.org', 'archive.org', 'mozilla.org',
-  'who.int', 'un.org', 'unesco.org', 'unicef.org',
-]);
-
-function isTrustedDomain(url: string): boolean {
-  try {
-    const hostname = new URL(url).hostname.toLowerCase();
-
-    // Direct match (with or without www)
-    const bare = hostname.replace(/^www\./, '');
-    if (TRUSTED_DOMAINS.has(bare)) return true;
-
-    // Check if it's a subdomain of a trusted domain (e.g. docs.google.com)
-    const parts = bare.split('.');
-    for (let i = 1; i < parts.length; i++) {
-      if (TRUSTED_DOMAINS.has(parts.slice(i).join('.'))) return true;
-    }
-
-    // Check trusted TLD patterns (all .gov, .edu, .mil, .europa.eu, etc.)
-    for (const pattern of TRUSTED_TLD_PATTERNS) {
-      if (pattern.test(hostname)) return true;
-    }
-
-    return false;
-  } catch { return false; }
+// ---------------------------------------------------------------------------
+// Detect if the input is URL-only (no actual message body to analyze).
+// In URL-only mode, the text field IS the URL itself — we must NOT feed that
+// to the pattern engine because path/query words like "scam", "fraud", "login"
+// would trigger false positives on legitimate sites about scam prevention.
+// ---------------------------------------------------------------------------
+function isUrlOnlyInput(input: AnalysisInput): boolean {
+  // No email body, no SMS body, no OCR text
+  if (input.emailBody || input.smsBody || input.screenshotOcrText) return false;
+  // text field must be the URL itself (or empty)
+  if (!input.url) return false;
+  if (!input.text) return true;
+  // If text is just the URL (possibly with/without protocol), it's URL-only
+  const textTrimmed = input.text.trim();
+  const urlTrimmed = input.url.trim();
+  if (textTrimmed === urlTrimmed) return true;
+  // Also match if text is the URL without protocol
+  if (textTrimmed === urlTrimmed.replace(/^https?:\/\//, '')) return true;
+  return false;
 }
 
 // ---------------------------------------------------------------------------
@@ -653,34 +614,13 @@ export async function analyzeWithVERIDICT(input: AnalysisInput): Promise<VERIDIC
   // --- Input preprocessing ---
   const processedInput = preprocessInput(input);
 
-  // --- Trusted domain fast path ---
-  // URL-only inputs to known-safe domains (google.com, fbi.gov, etc.)
-  // should return safe immediately. The URL text itself (query params,
-  // path segments) would otherwise trigger false positives.
-  const isUrlOnlyInput = processedInput.url && !processedInput.emailBody && !processedInput.smsBody && !processedInput.screenshotOcrText;
-  const textIsJustUrl = processedInput.text === processedInput.url || processedInput.text === input.url;
-  if (isUrlOnlyInput && textIsJustUrl && processedInput.url && isTrustedDomain(processedInput.url)) {
-    const elapsed = performance.now() - startTime;
-    return {
-      score: 0,
-      threatLevel: 'SAFE',
-      category: 'GENERIC',
-      evidence: [{ layer: 'Trust', finding: 'Trusted domain', severity: 'low' as const, detail: `${new URL(processedInput.url).hostname} is a known legitimate domain` }],
-      layerScores: { fisher: 0, conservation: 0, cascadeBreaker: 0, immune: 0 },
-      confidenceInterval: { lower: 0, upper: 5, confidence: 0.99 },
-      overallConfidence: 0.99,
-      processingTimeMs: Math.round(elapsed * 100) / 100,
-      inputType: 'url',
-      threatSeverity: { severity: 'none' as any, numericSeverity: 0, estimatedMaxLoss: '$0', description: 'Trusted domain', color: 'green', label: 'Safe' },
-      metaAnalysis: { agreementScore: 1, layerConsensus: 'unanimous' as any, reliability: 'high' as any, flags: [] },
-      similarKnownScam: null,
-      layerDetails: {
-        fisher: { score: 0, earlyStopTriggered: true, signalCount: 0, signals: [] },
-        conservation: { score: 0, violations: [] },
-        cascadeBreaker: { score: 0, breakers: [] },
-        immune: { score: 0, matchedAntibodies: [], noveltyScore: 0 },
-      },
-    } as unknown as VERIDICTResult;
+  // --- URL-only input fix ---
+  // When only a URL is provided (no email/SMS body), the text field IS the URL.
+  // Feeding "https://police.gov.sg/Advisories/Scams" to the pattern engine matches
+  // "scam" patterns and triggers false positives. Fix: clear text so only the URL
+  // deep analyzer (domain structure, TLD risk, entropy) runs — not the pattern engine.
+  if (isUrlOnlyInput(processedInput)) {
+    processedInput.text = ''; // Don't let URL path/query trigger text patterns
   }
 
   // Collect all text for category classification
