@@ -16,7 +16,7 @@
 .ss-dot[data-level="low"]      { background: #fbbf24; box-shadow: 0 0 4px #fbbf2440; }
 .ss-dot[data-level="medium"]   { background: #ff9800; box-shadow: 0 0 5px #ff980050; }
 .ss-dot[data-level="high"]     { background: #f44336; box-shadow: 0 0 6px #f4433650; }
-.ss-dot[data-level="critical"] { background: #9c27b0; box-shadow: 0 0 8px #9c27b060; animation: ss-pulse 1.4s infinite; }
+.ss-dot[data-level="critical"] { background: #ff1744; box-shadow: 0 0 8px #ff174460; animation: ss-pulse 1.4s infinite; }
 .ss-dot[data-level="scanning"] { background: #555; animation: ss-spin-dot 0.8s linear infinite; }
 
 @keyframes ss-pulse {
@@ -69,7 +69,7 @@
 .ss-badge-low      { background: #fbbf2415; color: #fbbf24; border: 1px solid #fbbf2430; }
 .ss-badge-medium   { background: #ff980015; color: #ff9800; border: 1px solid #ff980030; }
 .ss-badge-high     { background: #f4433615; color: #f44336; border: 1px solid #f4433630; }
-.ss-badge-critical { background: #9c27b020; color: #ce93d8; border: 1px solid #9c27b040; }
+.ss-badge-critical { background: #ff174420; color: #ff5252; border: 1px solid #ff174440; }
 .ss-badge-scanning { background: #ffffff08; color: #888; border: 1px solid #ffffff10; }
 
 .ss-card-score {

@@ -167,15 +167,15 @@
       .catch(function (err) {
         pendingHosts.delete(host);
         var msg = String(err);
-        if (msg.includes('401') || msg.includes('403')) {
-          // No API key or invalid key — show "setup" state once
-          updateDotsForHost(host, null, 0, '');
+        if (msg.includes('429')) {
+          // Rate limit — show limit banner once
           if (!noKeyWarningShown) {
             noKeyWarningShown = true;
-            showNoKeyBanner();
+            showLimitBanner();
           }
+          updateDotsForHost(host, null, 0, '');
         } else {
-          // Network error — remove dot silently
+          // Network error or other — remove dot silently
           updateDotsForHost(host, null, 0, '');
         }
       });
@@ -369,23 +369,23 @@
   }
 
   // ── No API key banner ─────────────────────────────────────────────────────
-  function showNoKeyBanner() {
-    if (document.getElementById('ss-nokey-banner')) return;
+  function showLimitBanner() {
+    if (document.getElementById('ss-limit-banner')) return;
     var banner = document.createElement('div');
-    banner.id = 'ss-nokey-banner';
-    banner.style.cssText = 'position:fixed;bottom:16px;right:16px;z-index:2147483646;background:#0d1117;border:1px solid #00d4ff40;border-radius:10px;padding:12px 16px;font-family:-apple-system,BlinkMacSystemFont,sans-serif;font-size:12px;color:#8892a4;box-shadow:0 4px 20px rgba(0,0,0,0.5);max-width:280px;';
+    banner.id = 'ss-limit-banner';
+    banner.style.cssText = 'position:fixed;bottom:16px;right:16px;z-index:2147483646;background:#0d1117;border:1px solid #ffc10740;border-radius:10px;padding:12px 16px;font-family:-apple-system,BlinkMacSystemFont,sans-serif;font-size:12px;color:#8892a4;box-shadow:0 4px 20px rgba(0,0,0,0.5);max-width:300px;';
     var title = document.createElement('div');
-    title.style.cssText = 'color:#00d4ff;font-weight:700;margin-bottom:4px;font-size:13px;';
-    title.textContent = '⚡ ScamShield';
+    title.style.cssText = 'color:#ffc107;font-weight:700;margin-bottom:4px;font-size:13px;';
+    title.textContent = '🛡️ ScamShieldy — Daily limit reached';
     banner.appendChild(title);
     var msg = document.createElement('div');
-    msg.textContent = 'Add your API key in extension settings to enable link scanning.';
+    msg.textContent = 'Free: 20 scans/day. Add an API key for 100/day, or upgrade to Pro for 10,000/day.';
     banner.appendChild(msg);
     var link = document.createElement('a');
-    link.href = 'https://scamshieldy.com/settings';
+    link.href = 'https://scamshieldy.com/pricing';
     link.target = '_blank';
     link.style.cssText = 'display:inline-block;margin-top:8px;color:#00d4ff;font-size:11px;text-decoration:none;';
-    link.textContent = 'Get API key →';
+    link.textContent = 'Upgrade →';
     banner.appendChild(link);
     var close = document.createElement('button');
     close.textContent = '✕';
@@ -393,7 +393,7 @@
     close.addEventListener('click', function () { banner.remove(); });
     banner.appendChild(close);
     document.documentElement.appendChild(banner);
-    setTimeout(function () { if (banner.parentNode) banner.remove(); }, 8000);
+    setTimeout(function () { if (banner.parentNode) banner.remove(); }, 10000);
   }
 
   // ── Cache helpers ─────────────────────────────────────────────────────────

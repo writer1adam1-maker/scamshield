@@ -7,10 +7,14 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { runVERIDICT } from "@/lib/algorithms/veridict-engine";
-import { requireApiKey } from "@/lib/api-key-auth";
+import { requireApiKey, extractApiKey } from "@/lib/api-key-auth";
 import type { AnalysisInput } from "@/lib/algorithms/types";
 
 const API_VERSION = "1.0";
+
+// Anonymous (no API key) rate limit: 20 scans/day per IP
+const anonLimits = new Map<string, { count: number; resetAt: number }>();
+const ANON_DAILY_LIMIT = 20;
 
 function buildAnalysisInput(type: string, content: string): AnalysisInput {
   if (type === "url") return { url: content, text: content };
@@ -42,12 +46,41 @@ export async function OPTIONS() {
 export async function POST(req: NextRequest) {
   const startTime = performance.now();
 
-  // --- Auth + rate limit (tracks usage automatically) ---
-  const auth = await requireApiKey(req);
-  if (auth.error) {
-    return NextResponse.json(auth.body, { status: auth.status, headers: auth.headers });
+  // --- Check if API key is provided ---
+  const hasKey = !!extractApiKey(req);
+  let keyInfo: { keyId: string; plan: "free" | "pro"; valid: boolean } = { keyId: "anon", plan: "free", valid: true };
+  let rateLimitRemaining = 0;
+  let rateLimitLimit = ANON_DAILY_LIMIT;
+
+  if (hasKey) {
+    // Authenticated path — full rate limits
+    const auth = await requireApiKey(req);
+    if (auth.error) {
+      return NextResponse.json(auth.body, { status: auth.status, headers: { ...CORS_HEADERS, ...auth.headers } });
+    }
+    keyInfo = auth.keyInfo;
+    rateLimitRemaining = auth.rateLimit.remaining;
+    rateLimitLimit = auth.rateLimit.limit;
+  } else {
+    // Anonymous path — 20 scans/day per IP (extension without key)
+    const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "unknown";
+    const now = Date.now();
+    const entry = anonLimits.get(ip);
+    if (!entry || now > entry.resetAt) {
+      anonLimits.set(ip, { count: 1, resetAt: now + 24 * 60 * 60 * 1000 });
+      rateLimitRemaining = ANON_DAILY_LIMIT - 1;
+    } else if (entry.count >= ANON_DAILY_LIMIT) {
+      return NextResponse.json({
+        error: "Daily limit reached (20 free scans). Add an API key in extension settings for 100/day, or upgrade to Pro for 10,000/day.",
+        limit: ANON_DAILY_LIMIT,
+        remaining: 0,
+        upgrade: "https://scamshieldy.com/pricing",
+      }, { status: 429, headers: CORS_HEADERS });
+    } else {
+      entry.count++;
+      rateLimitRemaining = ANON_DAILY_LIMIT - entry.count;
+    }
   }
-  const { keyInfo, rateLimit } = auth;
 
   // --- Parse body ---
   const body = await req.json().catch(() => null);
@@ -138,9 +171,8 @@ export async function POST(req: NextRequest) {
   response.meta = {
     keyId: keyInfo.keyId,
     plan: keyInfo.plan,
-    rateLimitRemaining: rateLimit.remaining,
-    rateLimitLimit: rateLimit.limit,
-    rateLimitResetAt: new Date(rateLimit.resetAt).toISOString(),
+    rateLimitRemaining,
+    rateLimitLimit,
   };
 
   return NextResponse.json(response, {
@@ -148,9 +180,8 @@ export async function POST(req: NextRequest) {
     headers: {
       ...CORS_HEADERS,
       "X-RateLimit-Plan": keyInfo.plan,
-      "X-RateLimit-Limit": String(rateLimit.limit),
-      "X-RateLimit-Remaining": String(rateLimit.remaining),
-      "X-RateLimit-Reset": String(rateLimit.resetAt),
+      "X-RateLimit-Limit": String(rateLimitLimit),
+      "X-RateLimit-Remaining": String(rateLimitRemaining),
       "X-API-Version": API_VERSION,
     },
   });

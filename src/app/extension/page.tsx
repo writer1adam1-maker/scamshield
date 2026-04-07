@@ -78,19 +78,26 @@ export default function ExtensionPage() {
             <h2 className="text-lg font-bold text-text-primary">ScamShield v2.0</h2>
             <p className="text-xs text-text-muted">Chrome & Firefox · Manifest V3</p>
           </div>
-          <a
-            href="/scamshield-extension.zip"
-            download
-            className="ml-auto flex items-center gap-2 px-4 py-2.5 rounded-xl bg-shield text-void font-bold text-sm hover:bg-shield-dim transition-colors shield-glow"
-          >
-            ↓ Download
-          </a>
+          <div className="ml-auto flex gap-2">
+            <a
+              href="/api/download/extension?browser=chrome"
+              className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-shield text-void font-bold text-sm hover:bg-shield-dim transition-colors shield-glow"
+            >
+              ↓ Chrome
+            </a>
+            <a
+              href="/api/download/extension?browser=firefox"
+              className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-obsidian border border-shield/30 text-shield font-bold text-sm hover:bg-shield/10 transition-colors"
+            >
+              ↓ Firefox
+            </a>
+          </div>
         </div>
 
         <div className="flex items-center gap-4 text-xs text-text-muted">
-          <span className="flex items-center gap-1"><CheckCircle2 size={10} className="text-safe" /> Free to use</span>
+          <span className="flex items-center gap-1"><CheckCircle2 size={10} className="text-safe" /> 20 free scans/day</span>
           <span className="flex items-center gap-1"><CheckCircle2 size={10} className="text-safe" /> No account required</span>
-          <span className="flex items-center gap-1"><CheckCircle2 size={10} className="text-safe" /> Open source ready</span>
+          <span className="flex items-center gap-1"><CheckCircle2 size={10} className="text-safe" /> API key for 100+/day</span>
         </div>
       </section>
 
