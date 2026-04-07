@@ -6,8 +6,11 @@ import {
   XCircle, Activity, Zap, Fingerprint, Brain, Thermometer, Network,
   TrendingUp, ChevronDown, ChevronUp, Lock, Dna, Target, Clock,
   ShieldCheck, RefreshCw, Info, Phone, MessageSquare, Mail, QrCode,
+  FlaskConical, Microscope, GitBranch, Waves,
 } from "lucide-react";
-import type { VaccineAnalyzeResponse } from "@/app/api/vaccine/analyze/route";
+import type { VaccineAnalyzeResponse, VaccineDNAResult, VaccineImmunityResult } from "@/app/api/vaccine/analyze/route";
+import { dnaSegmentColor } from "@/lib/vaccine/threat-dna";
+import { tierColor } from "@/lib/vaccine/immunity-model";
 
 // ---------------------------------------------------------------------------
 // Scan modes
@@ -485,6 +488,34 @@ export default function VaccinePage() {
             </div>
           </div>
 
+          {/* DNA + Immunity panels (vaccine-specific — only for analyze mode) */}
+          {analyzeResult?.dna && analyzeResult?.immunity && (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <DNAPanel dna={analyzeResult.dna} />
+              <ImmunityPanel immunity={analyzeResult.immunity} />
+            </div>
+          )}
+
+          {/* Pattern stats bar (analyze mode) */}
+          {analyzeResult && analyzeResult.totalPatternMatches > 0 && (
+            <div className="glass-card p-4 flex flex-wrap gap-4">
+              <div className="flex items-center gap-2">
+                <Microscope size={14} className="text-shield" />
+                <span className="text-xs text-text-muted">Pattern Engine</span>
+              </div>
+              <StatPill label="Pattern Matches" value={String(analyzeResult.totalPatternMatches)} color="shield" />
+              <StatPill label="Threat Groups" value={String(analyzeResult.uniqueGroupsHit)} color="caution" />
+              {analyzeResult.patternHits.slice(0, 3).map((h) => (
+                <StatPill
+                  key={h.group}
+                  label={h.group.replace(/_/g, " ")}
+                  value={`w${h.maxWeight}`}
+                  color={h.severity === "critical" ? "danger" : h.severity === "high" ? "caution" : "shield"}
+                />
+              ))}
+            </div>
+          )}
+
           {/* Breach Cards — the main section */}
           {breachCards.length === 0 ? (
             <div className="glass-card p-8 text-center">
@@ -803,6 +834,172 @@ function QuickStat({ icon: Icon, label, value }: { icon: React.ComponentType<{ s
       <span className="text-text-primary text-xs font-mono font-medium">{value}</span>
       <span className="text-text-muted text-[9px]">{label}</span>
     </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// DNA Panel — visualizes the 12-dimension threat fingerprint
+// ---------------------------------------------------------------------------
+function DNAPanel({ dna }: { dna: VaccineDNAResult }) {
+  const mutationColors: Record<string, string> = {
+    NOVEL:     "bg-shield/10 text-shield border-shield/20",
+    VARIANT:   "bg-caution/10 text-caution border-caution/20",
+    CLONE:     "bg-danger/10 text-danger border-danger/20",
+    EVOLVED:   "bg-caution/10 text-caution border-caution/20",
+    SYNTHETIC: "bg-critical/10 text-critical border-critical/20",
+  };
+
+  return (
+    <div className="glass-card p-4 space-y-3">
+      <div className="flex items-center gap-2">
+        <Dna size={15} className="text-shield" />
+        <span className="text-sm font-semibold text-text-primary">Threat DNA</span>
+        <span className={`ml-auto text-[10px] font-mono px-2 py-0.5 rounded-full border ${mutationColors[dna.mutationClass] ?? mutationColors.NOVEL}`}>
+          {dna.mutationClass}
+        </span>
+      </div>
+
+      {/* Hex fingerprint */}
+      <div className="font-mono text-xs text-text-muted bg-obsidian border border-border rounded-lg px-3 py-2 tracking-widest text-center select-all">
+        {dna.hex.match(/.{1,4}/g)?.join(" ")}
+      </div>
+
+      {/* Dimension bars */}
+      <div className="space-y-1.5">
+        {dna.dimensions.filter(d => d.intensity > 0).sort((a, b) => b.intensity - a.intensity).slice(0, 6).map((dim) => (
+          <div key={dim.name} className="flex items-center gap-2">
+            <span className="text-[10px] font-mono text-text-muted w-20 shrink-0 truncate">{dim.label}</span>
+            <div className="flex-1 h-2 rounded-full bg-obsidian overflow-hidden">
+              <div
+                className={`h-full rounded-full transition-all ${
+                  dim.intensity >= 12 ? "bg-critical" :
+                  dim.intensity >= 8  ? "bg-danger" :
+                  dim.intensity >= 5  ? "bg-caution" :
+                  "bg-shield"
+                }`}
+                style={{ width: `${(dim.intensity / 15) * 100}%` }}
+              />
+            </div>
+            <span className="text-[10px] font-mono text-text-muted w-4 text-right">{dim.intensity}</span>
+          </div>
+        ))}
+      </div>
+
+      {/* Segment blocks */}
+      <div className="flex gap-0.5 flex-wrap">
+        {dna.hex.split("").map((char, i) => (
+          <div
+            key={i}
+            className={`w-5 h-5 rounded flex items-center justify-center text-[9px] font-mono font-bold ${dnaSegmentColor(parseInt(char, 16))}`}
+            title={dna.dimensions[i]?.label}
+          >
+            {char}
+          </div>
+        ))}
+      </div>
+
+      <p className="text-[10px] text-text-muted">{dna.mutationLabel} · dominant strand: <span className="text-shield">{dna.dominantStrand.replace(/_/g, " ")}</span></p>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Immunity Panel — shows immune strength, antibodies, decay rate
+// ---------------------------------------------------------------------------
+function ImmunityPanel({ immunity }: { immunity: VaccineImmunityResult }) {
+  const boosterIn = immunity.boosterDueAt - Date.now();
+  const boosterHours = Math.max(0, Math.round(boosterIn / (1000 * 60 * 60)));
+  const boosterDays = Math.floor(boosterHours / 24);
+  const boosterLabel = boosterDays > 0 ? `${boosterDays}d ${boosterHours % 24}h` : `${boosterHours}h`;
+
+  const strengthColor =
+    immunity.strength >= 80 ? "text-safe" :
+    immunity.strength >= 50 ? "text-caution" :
+    "text-danger";
+
+  const tierCls = tierColor(immunity.tier as Parameters<typeof tierColor>[0]);
+
+  return (
+    <div className="glass-card p-4 space-y-3">
+      <div className="flex items-center gap-2">
+        <FlaskConical size={15} className="text-shield" />
+        <span className="text-sm font-semibold text-text-primary">Immunity Profile</span>
+        <span className={`ml-auto text-[10px] font-mono ${tierCls}`}>{immunity.tier}</span>
+      </div>
+
+      {/* Strength meter */}
+      <div className="space-y-1">
+        <div className="flex justify-between items-center">
+          <span className="text-[10px] text-text-muted">Immune Strength</span>
+          <span className={`text-sm font-bold font-mono ${strengthColor}`}>{immunity.strength}%</span>
+        </div>
+        <div className="h-3 rounded-full bg-obsidian overflow-hidden">
+          <div
+            className={`h-full rounded-full transition-all ${
+              immunity.strength >= 80 ? "bg-safe" :
+              immunity.strength >= 50 ? "bg-caution" :
+              "bg-danger"
+            }`}
+            style={{ width: `${immunity.strength}%` }}
+          />
+        </div>
+        <p className="text-[10px] text-text-muted">{immunity.tierLabel}</p>
+      </div>
+
+      {/* Stats row */}
+      <div className="grid grid-cols-3 gap-2">
+        <div className="text-center p-2 rounded-lg bg-obsidian border border-border">
+          <div className="text-xs font-bold font-mono text-shield">{immunity.peakStrength}%</div>
+          <div className="text-[9px] text-text-muted">Peak</div>
+        </div>
+        <div className="text-center p-2 rounded-lg bg-obsidian border border-border">
+          <div className="text-xs font-bold font-mono text-caution">{boosterLabel}</div>
+          <div className="text-[9px] text-text-muted">Booster In</div>
+        </div>
+        <div className="text-center p-2 rounded-lg bg-obsidian border border-border">
+          <div className="text-xs font-bold font-mono text-text-primary">{immunity.exposureCount}×</div>
+          <div className="text-[9px] text-text-muted">Exposures</div>
+        </div>
+      </div>
+
+      {/* Antibodies */}
+      {immunity.antibodies.length > 0 && (
+        <div className="space-y-1">
+          <p className="text-[10px] font-mono text-text-muted uppercase tracking-wider flex items-center gap-1">
+            <GitBranch size={9} /> Antibodies Generated
+          </p>
+          {immunity.antibodies.map((ab) => (
+            <div key={ab.dimension} className="flex items-center gap-2">
+              <span className="text-[10px] text-text-secondary w-28 shrink-0 truncate">{ab.targetLabel}</span>
+              <div className="flex-1 h-1.5 rounded-full bg-obsidian overflow-hidden">
+                <div className="h-full bg-shield/70 rounded-full" style={{ width: `${ab.strength}%` }} />
+              </div>
+              <span className="text-[10px] font-mono text-text-muted">{ab.strength}%</span>
+            </div>
+          ))}
+        </div>
+      )}
+
+      <p className="text-[10px] text-text-muted flex items-center gap-1">
+        <Waves size={9} /> {immunity.decayRateLabel}
+      </p>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// StatPill
+// ---------------------------------------------------------------------------
+function StatPill({ label, value, color }: { label: string; value: string; color: "shield" | "caution" | "danger" }) {
+  const cls = {
+    shield: "bg-shield/10 text-shield border-shield/20",
+    caution: "bg-caution/10 text-caution border-caution/20",
+    danger: "bg-danger/10 text-danger border-danger/20",
+  }[color];
+  return (
+    <span className={`text-[10px] font-mono px-2 py-1 rounded-full border ${cls}`}>
+      {label}: <strong>{value}</strong>
+    </span>
   );
 }
 
