@@ -555,19 +555,20 @@ export default function VaccinePage() {
       {/* Script Modal */}
       {scriptModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-void/80 backdrop-blur-sm">
-          <div className="glass-card w-full max-w-2xl max-h-[90vh] flex flex-col border border-shield/30 overflow-hidden">
-            <div className="relative flex items-center gap-3 p-5 pr-14 border-b border-white/5">
-              <div className="w-9 h-9 rounded-lg bg-shield/10 border border-shield/20 flex items-center justify-center shrink-0">
-                <ShieldCheck size={18} className="text-shield" />
+          <div className="glass-card w-full max-w-2xl max-h-[90vh] flex flex-col border border-shield/30">
+            <div className="flex items-center gap-3 p-4 border-b border-white/5">
+              <div className="w-8 h-8 rounded-lg bg-shield/10 border border-shield/20 flex items-center justify-center" style={{flexShrink: 0}}>
+                <ShieldCheck size={16} className="text-shield" />
               </div>
-              <div className="min-w-0 overflow-hidden">
-                <h2 className="text-base font-semibold text-text-primary truncate">Vaccine Ready — {scriptModal.modules.length} modules active</h2>
-                <p className="text-xs text-text-muted font-mono truncate max-w-full">{scriptModal.url}</p>
+              <div style={{flex: 1, minWidth: 0, overflow: 'hidden'}}>
+                <h2 className="text-sm font-semibold text-text-primary" style={{overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>Vaccine Ready — {scriptModal.modules.length} modules active</h2>
+                <p className="text-xs text-text-muted font-mono" style={{overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{scriptModal.url}</p>
               </div>
-              {/* Close button — absolutely anchored, never pushed off-screen */}
               <button
                 onClick={() => setScriptModal(null)}
-                className="absolute top-4 right-4 w-8 h-8 flex items-center justify-center rounded-lg bg-white/5 hover:bg-white/10 text-text-muted hover:text-text-primary text-base transition-colors"
+                style={{flexShrink: 0, width: 32, height: 32, display:'flex', alignItems:'center', justifyContent:'center', borderRadius: 8, background: 'rgba(255,255,255,0.06)', cursor:'pointer', border:'none', color:'#8892a4', fontSize: 16}}
+                onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.12)')}
+                onMouseLeave={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.06)')}
               >✕</button>
             </div>
 
