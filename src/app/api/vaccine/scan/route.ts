@@ -6,9 +6,8 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { runVERIDICT } from "@/lib/algorithms/veridict-engine";
-import { validateUrl } from "@/lib/vaccine/url-validator";
-import { signPayload } from "@/lib/vaccine/payload-signer";
-import { checkRateLimit } from "@/lib/vaccine/rate-limiter";
+import { checkRateLimit } from "@/lib/rate-limit";
+import { getClientIp } from "@/lib/utils";
 import { getUserFromRequest, canScan, incrementScanCount } from "@/lib/auth-helpers";
 import type { InjectionRule } from "@/lib/vaccine/types";
 import type { EvidenceItem } from "@/lib/algorithms/types";
@@ -66,14 +65,10 @@ export async function POST(req: NextRequest) {
   const startTime = Date.now();
 
   try {
-    const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "unknown";
-
-    const rateCheck = checkRateLimit(ip, "scan");
-    if (!rateCheck.allowed) {
-      return NextResponse.json(
-        { error: rateCheck.reason || "Rate limit exceeded" },
-        { status: 429, headers: { "Retry-After": String(Math.ceil(rateCheck.retryAfterMs / 1000)) } }
-      );
+    const ip = getClientIp(req);
+    const rateLimit = checkRateLimit(ip, false);
+    if (!rateLimit.allowed) {
+      return NextResponse.json({ error: "Rate limit exceeded." }, { status: 429 });
     }
 
     const body = await req.json().catch(() => ({}));
@@ -81,12 +76,12 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Missing 'url' parameter" }, { status: 400 });
     }
 
-    const urlValidation = validateUrl(body.url);
-    if (!urlValidation.valid) {
-      return NextResponse.json({ error: `Invalid URL: ${urlValidation.error}` }, { status: 400 });
+    // Normalize URL
+    let safeUrl = body.url.trim();
+    if (!/^https?:\/\//i.test(safeUrl)) safeUrl = "https://" + safeUrl;
+    try { safeUrl = new URL(safeUrl).toString(); } catch {
+      return NextResponse.json({ error: "Invalid URL" }, { status: 400 });
     }
-
-    const safeUrl = urlValidation.sanitizedUrl;
 
     // Auth + quota
     const authUser = await getUserFromRequest(req);
@@ -97,15 +92,11 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // Run VERIDICT engine (same as main scan — 13k+ patterns, Fisher cascade, all layers)
+    // Run VERIDICT engine
     const verdict = await runVERIDICT({ url: safeUrl, text: safeUrl });
 
-    // Convert evidence → threats + injection rules
     const threats = evidenceToThreats(verdict.evidence);
     const rules = evidenceToRules(verdict.evidence);
-
-    // Sign
-    const signed = await signPayload(JSON.stringify(rules));
 
     if (authUser) {
       await incrementScanCount(authUser.id);
@@ -118,8 +109,8 @@ export async function POST(req: NextRequest) {
       threatScore: Math.round(verdict.score),
       threatsDetected: threats,
       injectionRules: rules,
-      signature: signed.signature,
-      signedAt: signed.timestamp,
+      signature: "none",
+      signedAt: Date.now(),
       latencyMs: Date.now() - startTime,
     }, {
       headers: { "Cache-Control": "no-store" },

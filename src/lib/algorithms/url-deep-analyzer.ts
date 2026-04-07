@@ -773,7 +773,7 @@ export function deepAnalyzeUrl(url: string): DeepUrlResult {
   const homoResult = detectHomoglyphs(parsed.hostname);
   if (homoResult.score > 0) flags.push(`Homograph/IDN characters detected in hostname`);
 
-  const brandResult = brandDistanceAnalysis(parsed.domain + (parsed.subdomain ? '.' + parsed.subdomain : ''));
+  const brandResult = brandDistanceAnalysis(parsed.hostname);
   if (brandResult.score > 0.3) {
     const brands = brandResult.detectedBrands.map((b) => b.brand).join(', ');
     flags.push(`Domain impersonates known brand(s): ${brands}`);
