@@ -32,41 +32,62 @@ import { analyzeConversationArc } from './conversation-arc';
 // Trusted domains — never flag these as scams even if URL contains scam words
 // These are major legitimate sites; the pattern engine should not score them.
 // ---------------------------------------------------------------------------
+// Trusted TLD suffixes — entire government/education/military TLDs are safe
+const TRUSTED_TLD_PATTERNS = [
+  /\.gov$/,                    // US federal (.gov)
+  /\.gov\.[a-z]{2}$/,         // Other countries (.gov.uk, .gov.au, .gov.sg, .gov.my, .gov.ie)
+  /\.state\.[a-z]{2}\.us$/,   // US state sites (.state.mn.us, .state.or.us)
+  /\.edu$/,                    // Universities (.edu)
+  /\.edu\.[a-z]{2}$/,         // Intl universities (.edu.au)
+  /\.mil$/,                    // US military
+  /\.europa\.eu$/,             // EU institutions
+  /\.int$/,                    // International orgs (WHO, UNESCO)
+  /\.ac\.[a-z]{2}$/,          // Academic (.ac.uk, .ac.jp)
+  /\.gc\.ca$/,                 // Canadian government
+  /\.gouv\.fr$/,               // French government
+  /\.gob\.[a-z]{2}$/,         // Spanish/Latin gov (.gob.mx, .gob.es)
+  /\.go\.[a-z]{2}$/,          // Other gov (.go.jp, .go.kr)
+];
+
+// Major known-safe domains
 const TRUSTED_DOMAINS = new Set([
-  'google.com', 'www.google.com', 'youtube.com', 'www.youtube.com',
-  'facebook.com', 'www.facebook.com', 'twitter.com', 'x.com',
-  'instagram.com', 'www.instagram.com', 'linkedin.com', 'www.linkedin.com',
-  'reddit.com', 'www.reddit.com', 'wikipedia.org', 'en.wikipedia.org',
-  'amazon.com', 'www.amazon.com', 'apple.com', 'www.apple.com',
-  'microsoft.com', 'www.microsoft.com', 'github.com', 'www.github.com',
-  'stackoverflow.com', 'www.stackoverflow.com',
-  'netflix.com', 'www.netflix.com', 'spotify.com', 'www.spotify.com',
-  'paypal.com', 'www.paypal.com', 'ebay.com', 'www.ebay.com',
-  'yahoo.com', 'www.yahoo.com', 'bing.com', 'www.bing.com',
-  'bbc.com', 'www.bbc.com', 'cnn.com', 'www.cnn.com',
-  'nytimes.com', 'www.nytimes.com', 'theguardian.com',
-  'fbi.gov', 'www.fbi.gov', 'irs.gov', 'www.irs.gov',
-  'whitehouse.gov', 'www.whitehouse.gov', 'usa.gov',
-  'cloudflare.com', 'aws.amazon.com', 'azure.microsoft.com',
-  'docs.google.com', 'drive.google.com', 'mail.google.com',
-  'outlook.com', 'outlook.live.com', 'live.com',
+  'google.com', 'youtube.com', 'facebook.com', 'twitter.com', 'x.com',
+  'instagram.com', 'linkedin.com', 'reddit.com', 'wikipedia.org',
+  'amazon.com', 'apple.com', 'microsoft.com', 'github.com',
+  'stackoverflow.com', 'netflix.com', 'spotify.com', 'paypal.com',
+  'ebay.com', 'yahoo.com', 'bing.com', 'bbc.com', 'cnn.com',
+  'nytimes.com', 'theguardian.com', 'reuters.com', 'apnews.com',
+  'forbes.com', 'bloomberg.com', 'washingtonpost.com',
+  'cloudflare.com', 'outlook.com', 'live.com',
   'zoom.us', 'slack.com', 'discord.com', 'twitch.tv',
-  'tiktok.com', 'www.tiktok.com', 'pinterest.com',
-  'whatsapp.com', 'web.whatsapp.com', 'signal.org',
-  'dropbox.com', 'www.dropbox.com', 'notion.so',
-  'stripe.com', 'paddle.com', 'vercel.com', 'netlify.com',
-  'supabase.com', 'firebase.google.com', 'heroku.com',
+  'tiktok.com', 'pinterest.com', 'whatsapp.com', 'signal.org',
+  'dropbox.com', 'notion.so', 'stripe.com', 'paddle.com',
+  'vercel.com', 'netlify.com', 'supabase.com', 'heroku.com',
+  'wordpress.com', 'medium.com', 'substack.com',
+  'avg.com', 'norton.com', 'kaspersky.com', 'malwarebytes.com',
+  'wiktionary.org', 'archive.org', 'mozilla.org',
+  'who.int', 'un.org', 'unesco.org', 'unicef.org',
 ]);
 
 function isTrustedDomain(url: string): boolean {
   try {
     const hostname = new URL(url).hostname.toLowerCase();
-    if (TRUSTED_DOMAINS.has(hostname)) return true;
-    // Check if it's a subdomain of a trusted domain
-    const parts = hostname.split('.');
+
+    // Direct match (with or without www)
+    const bare = hostname.replace(/^www\./, '');
+    if (TRUSTED_DOMAINS.has(bare)) return true;
+
+    // Check if it's a subdomain of a trusted domain (e.g. docs.google.com)
+    const parts = bare.split('.');
     for (let i = 1; i < parts.length; i++) {
       if (TRUSTED_DOMAINS.has(parts.slice(i).join('.'))) return true;
     }
+
+    // Check trusted TLD patterns (all .gov, .edu, .mil, .europa.eu, etc.)
+    for (const pattern of TRUSTED_TLD_PATTERNS) {
+      if (pattern.test(hostname)) return true;
+    }
+
     return false;
   } catch { return false; }
 }
