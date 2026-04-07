@@ -24,6 +24,12 @@
   if (window._scamshieldContentScriptLoaded) return;
   window._scamshieldContentScriptLoaded = true;
 
+  // ─── ANNOUNCE EXTENSION PRESENCE TO VACCINE PAGE ───
+  // Lets scamshieldy.com/vaccine know the extension is active on this tab
+  if (window.location.hostname === 'scamshieldy.com' || window.location.hostname === 'scamshield-green.vercel.app') {
+    window.postMessage({ type: 'SCAMSHIELDY_EXTENSION_PRESENT', version: '2.0.0' }, window.location.origin);
+  }
+
   // ─── NOTIFY BACKGROUND SCRIPT ───
   chrome.runtime.sendMessage(
     { type: 'page_loaded', url: window.location.href },
@@ -249,6 +255,31 @@
       console.warn('[ScamShield Monitor] Form submission:', e.target.action || '(no action)');
     }, true);
   }
+
+  // ─── VACCINE INJECT FROM WEB PAGE (via window.postMessage) ───
+  // Allows scamshieldy.com vaccine page to push rules directly to extension.
+  window.addEventListener('message', function (event) {
+    // Only trust messages from scamshieldy.com
+    if (event.origin !== 'https://scamshieldy.com' && event.origin !== 'https://scamshield-green.vercel.app') return;
+    if (!event.data || event.data.type !== 'SCAMSHIELDY_VACCINE_INJECT') return;
+
+    var url = event.data.url;
+    var rules = event.data.rules;
+
+    if (!url || typeof url !== 'string') return;
+    if (!validateInjectionRules(rules)) return;
+
+    // Forward to background script to cache for that URL
+    chrome.runtime.sendMessage(
+      { type: 'store_vaccine', url: url, rules: rules },
+      function (response) {
+        if (chrome.runtime.lastError) return;
+        if (response && response.status === 'stored') {
+          console.log('ScamShield: Vaccine stored for', url);
+        }
+      }
+    );
+  });
 
   // ─── MESSAGE LISTENER ───
   chrome.runtime.onMessage.addListener(function (request, sender, sendResponse) {

@@ -4,10 +4,10 @@ import { useState, useEffect, useRef } from "react";
 import {
   Shield, Syringe, Globe, Loader2, AlertTriangle, CheckCircle2,
   XCircle, ChevronDown, ChevronUp, Lock, Dna, Clock,
-  ShieldCheck, Info, Copy, Check, Terminal, ExternalLink,
-  FlaskConical, GitBranch, Waves, Network, Target,
-  Activity, Fingerprint, Thermometer, Brain, QrCode,
-  Bookmark,
+  ShieldCheck, Info, Copy, Check, ExternalLink,
+  Network, Target,
+  Activity, Fingerprint, Thermometer, Brain,
+  Bookmark, Send,
 } from "lucide-react";
 import { dnaSegmentColor } from "@/lib/vaccine/threat-dna";
 import { tierColor } from "@/lib/vaccine/immunity-model";
@@ -177,10 +177,20 @@ export default function VaccinePage() {
   const [enabledModules, setEnabledModules] = useState<Set<string>>(
     () => new Set(ALL_MODULES.filter(m => m.default).map(m => m.id))
   );
-  const [scriptModal, setScriptModal] = useState<{ script: string; modules: string[]; url: string; copied: boolean } | null>(null);
+  const [scriptModal, setScriptModal] = useState<{ script: string; modules: string[]; url: string; rules: InjectionRule[]; copied: boolean; sent: boolean } | null>(null);
   const [showModules, setShowModules] = useState(false);
   const [showBookmarklet, setShowBookmarklet] = useState(false);
+  const [extensionDetected, setExtensionDetected] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+
+  // Detect if ScamShieldy extension is installed
+  useEffect(() => {
+    const handler = (e: MessageEvent) => {
+      if (e.data?.type === 'SCAMSHIELDY_EXTENSION_PRESENT') setExtensionDetected(true);
+    };
+    window.addEventListener('message', handler);
+    return () => window.removeEventListener('message', handler);
+  }, []);
 
   async function handleScan() {
     const trimmed = url.trim();
@@ -217,7 +227,7 @@ export default function VaccinePage() {
       });
       if (res.ok) {
         const data: ProtectResponse = await res.json();
-        setScriptModal({ script: data.script, modules: data.modules, url: result.url, copied: false });
+        setScriptModal({ script: data.script, modules: data.modules, url: result.url, rules: result.injectionRules, copied: false, sent: false });
       }
     } catch { /* ignore */ }
   }
@@ -242,6 +252,14 @@ export default function VaccinePage() {
           Scan any website and generate a real-time protection script that neutralizes threats — phishing forms,
           credential stealers, malware injections, clipboard hijackers — so you can visit the site safely.
         </p>
+        <div className={`inline-flex items-center gap-1.5 mt-2 px-2.5 py-1 rounded-full text-[11px] font-mono border ${
+          extensionDetected
+            ? "bg-safe/10 border-safe/25 text-safe"
+            : "bg-white/3 border-border text-text-muted"
+        }`}>
+          <div className={`w-1.5 h-1.5 rounded-full ${extensionDetected ? "bg-safe animate-pulse" : "bg-text-muted"}`} />
+          {extensionDetected ? "Extension connected" : "Extension not detected"}
+        </div>
       </div>
 
       {/* How it works — compact */}
@@ -253,7 +271,7 @@ export default function VaccinePage() {
         <span className="text-white/10">→</span>
         <span><strong className="text-text-secondary">3.</strong> Vaccinate — generate protection script</span>
         <span className="text-white/10">→</span>
-        <span><strong className="text-text-secondary">4.</strong> Paste in console or auto-inject via extension</span>
+        <span><strong className="text-text-secondary">4.</strong> Send to extension — auto-applies when you visit the site</span>
       </div>
 
       {/* Scan Input */}
@@ -533,14 +551,14 @@ export default function VaccinePage() {
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-void/80 backdrop-blur-sm">
           <div className="glass-card w-full max-w-2xl max-h-[90vh] flex flex-col border border-shield/30">
             <div className="flex items-center gap-3 p-5 border-b border-white/5">
-              <div className="w-9 h-9 rounded-lg bg-shield/10 border border-shield/20 flex items-center justify-center">
+              <div className="w-9 h-9 rounded-lg bg-shield/10 border border-shield/20 flex items-center justify-center shrink-0">
                 <ShieldCheck size={18} className="text-shield" />
               </div>
-              <div className="flex-1">
-                <h2 className="text-base font-semibold text-text-primary">Vaccine Ready — {scriptModal.modules.length} modules active</h2>
+              <div className="flex-1 min-w-0">
+                <h2 className="text-base font-semibold text-text-primary truncate">Vaccine Ready — {scriptModal.modules.length} modules active</h2>
                 <p className="text-xs text-text-muted font-mono truncate">{scriptModal.url}</p>
               </div>
-              <button onClick={() => setScriptModal(null)} className="text-text-muted hover:text-text-primary text-xl">✕</button>
+              <button onClick={() => setScriptModal(null)} className="shrink-0 w-8 h-8 flex items-center justify-center rounded-lg hover:bg-white/5 text-text-muted hover:text-text-primary text-lg transition-colors">✕</button>
             </div>
 
             <div className="px-5 pt-4 pb-2">
@@ -551,38 +569,64 @@ export default function VaccinePage() {
               </div>
             </div>
 
-            <div className="mx-5 mb-3 p-3 rounded-lg bg-caution/5 border border-caution/20 space-y-1.5">
-              <p className="text-xs font-semibold text-caution flex items-center gap-1.5"><Terminal size={12} />How to apply:</p>
-              <ol className="text-xs text-text-secondary space-y-0.5 list-decimal list-inside">
-                <li>Copy the script</li>
-                <li>Open the site → Press <kbd className="px-1 py-0.5 rounded bg-obsidian border border-border text-[10px] font-mono">F12</kbd> → <strong>Console</strong> tab</li>
-                <li>Paste → <kbd className="px-1 py-0.5 rounded bg-obsidian border border-border text-[10px] font-mono">Enter</kbd></li>
-              </ol>
-              <p className="text-[10px] text-text-muted">Or install the ScamShieldy Extension for automatic protection on every page.</p>
-            </div>
-
-            <div className="flex-1 overflow-auto mx-5 mb-3">
-              <pre className="text-[10px] font-mono text-text-secondary bg-obsidian border border-border rounded-lg p-3 whitespace-pre-wrap overflow-auto max-h-56">
-                {scriptModal.script}
-              </pre>
-            </div>
-
-            <div className="p-5 pt-0 flex gap-3">
+            <div className="p-5 pt-0 space-y-3">
+              {/* Primary: Send to Extension */}
               <button
                 onClick={() => {
-                  navigator.clipboard.writeText(scriptModal.script).then(() => {
-                    setScriptModal(s => s ? { ...s, copied: true } : null);
-                    setTimeout(() => setScriptModal(s => s ? { ...s, copied: false } : null), 2500);
-                  });
+                  if (!scriptModal) return;
+                  window.postMessage({
+                    type: 'SCAMSHIELDY_VACCINE_INJECT',
+                    url: scriptModal.url,
+                    rules: scriptModal.rules,
+                  }, window.location.origin);
+                  setScriptModal(s => s ? { ...s, sent: true } : null);
                 }}
-                className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl bg-shield/15 border border-shield/30 text-shield font-semibold text-sm hover:bg-shield/25 transition-colors"
+                disabled={scriptModal.sent || !extensionDetected}
+                className={`w-full flex items-center justify-center gap-2 py-3 rounded-xl font-semibold text-sm transition-all ${
+                  scriptModal.sent
+                    ? "bg-safe/15 border border-safe/30 text-safe cursor-default"
+                    : extensionDetected
+                    ? "bg-shield hover:bg-shield/90 text-white"
+                    : "bg-obsidian border border-border text-text-muted cursor-not-allowed opacity-50"
+                }`}
               >
-                {scriptModal.copied ? <><Check size={15} />Copied!</> : <><Copy size={15} />Copy Vaccine Script</>}
+                {scriptModal.sent
+                  ? <><Check size={16} /> Vaccine sent — visit the site to activate</>
+                  : extensionDetected
+                  ? <><Send size={16} /> Send to Extension</>
+                  : <><Send size={16} /> Extension not detected — install it first</>
+                }
               </button>
-              <a href={scriptModal.url} target="_blank" rel="noopener noreferrer"
-                className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-obsidian border border-border text-text-secondary text-sm hover:border-shield/30 transition-colors">
-                <ExternalLink size={15} />Open Site
-              </a>
+              {!extensionDetected && !scriptModal.sent && (
+                <p className="text-[11px] text-text-muted text-center">
+                  Install the <a href="/download" className="text-shield underline">ScamShieldy Extension</a> to use one-click injection. Or use copy script below.
+                </p>
+              )}
+
+              {scriptModal.sent && (
+                <p className="text-[11px] text-text-muted text-center">
+                  Protection will auto-apply the next time you visit <span className="font-mono text-shield">{new URL(scriptModal.url).hostname}</span>
+                </p>
+              )}
+
+              {/* Secondary row */}
+              <div className="flex gap-2">
+                <button
+                  onClick={() => {
+                    navigator.clipboard.writeText(scriptModal.script).then(() => {
+                      setScriptModal(s => s ? { ...s, copied: true } : null);
+                      setTimeout(() => setScriptModal(s => s ? { ...s, copied: false } : null), 2500);
+                    });
+                  }}
+                  className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl bg-obsidian border border-border text-text-muted text-xs hover:border-shield/30 hover:text-shield transition-colors"
+                >
+                  {scriptModal.copied ? <><Check size={13} />Copied</> : <><Copy size={13} />Copy script (no extension)</>}
+                </button>
+                <a href={scriptModal.url} target="_blank" rel="noopener noreferrer"
+                  className="flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl bg-obsidian border border-border text-text-muted text-xs hover:border-shield/30 hover:text-shield transition-colors">
+                  <ExternalLink size={13} />Open site
+                </a>
+              </div>
             </div>
           </div>
         </div>

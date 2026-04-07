@@ -205,6 +205,33 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     return true;
   }
 
+  // Store vaccine pushed from vaccine page
+  if (request.type === 'store_vaccine') {
+    const rawUrl = request.url;
+    const rules = request.rules;
+    if (rawUrl && typeof rawUrl === 'string' && Array.isArray(rules)) {
+      let storeUrl = rawUrl;
+      let originKey = rawUrl;
+      try {
+        const parsed = new URL(rawUrl);
+        storeUrl = parsed.toString();
+        originKey = parsed.origin;
+      } catch {}
+      const syntheticVaccine = {
+        url: storeUrl,
+        threatLevel: 'high',
+        threatScore: 75,
+        threatsDetected: [],
+        injectionRules: rules,
+        timestamp: Date.now(),
+      };
+      setVaccineCache(originKey, syntheticVaccine);
+      console.log('ScamShield: Vaccine stored for', originKey, '—', rules.length, 'rules');
+    }
+    sendResponse({ status: 'stored' });
+    return true;
+  }
+
   if (request.type === 'vaccine_applied') {
     sendResponse({ status: 'received' });
   }
@@ -284,6 +311,12 @@ function setVaccineCache(url, vaccine) {
 function getVaccineFromCache(url) {
   if (!url) return null;
   var cached = VACCINE_CACHE.get(url);
+  if (!cached) {
+    try {
+      var origin = new URL(url).origin;
+      cached = VACCINE_CACHE.get(origin);
+    } catch {}
+  }
   if (!cached) return null;
   if (Date.now() > cached.expires) {
     VACCINE_CACHE.delete(url);
