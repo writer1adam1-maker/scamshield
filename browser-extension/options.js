@@ -10,19 +10,19 @@
   var saveBtn     = document.getElementById('saveBtn');
   var clearBtn    = document.getElementById('clearBtn');
   var keyStatus   = document.getElementById('keyStatus');
-  var toggleEnabled = document.getElementById('toggleEnabled');
-  var toggleBlock   = document.getElementById('toggleBlock');
+  var toggleEnabled  = document.getElementById('toggleEnabled');
+  var toggleBlock    = document.getElementById('toggleBlock');
+  var toggleWarnings = document.getElementById('toggleWarnings');
   var statScanned   = document.getElementById('statScanned');
   var statThreats   = document.getElementById('statThreats');
   var statBlocked   = document.getElementById('statBlocked');
 
   // Load saved settings
-  chrome.storage.sync.get(['ss_api_key', 'ss_enabled', 'ss_block_clicks'], function (data) {
-    if (data.ss_api_key) {
-      apiKeyInput.value = data.ss_api_key;
-    }
+  chrome.storage.sync.get(['ss_api_key', 'ss_enabled', 'ss_block_clicks', 'ss_warnings_disabled'], function (data) {
+    if (data.ss_api_key) apiKeyInput.value = data.ss_api_key;
     setToggle(toggleEnabled, data.ss_enabled !== false);
     setToggle(toggleBlock, data.ss_block_clicks !== false);
+    setToggle(toggleWarnings, data.ss_warnings_disabled === true);
   });
 
   // Load session stats
@@ -71,6 +71,12 @@
     var next = !toggleBlock.classList.contains('on');
     setToggle(toggleBlock, next);
     chrome.storage.sync.set({ ss_block_clicks: next });
+  });
+
+  toggleWarnings.addEventListener('click', function () {
+    var next = !toggleWarnings.classList.contains('on');
+    setToggle(toggleWarnings, next);
+    chrome.storage.sync.set({ ss_warnings_disabled: next });
   });
 
   // Helpers

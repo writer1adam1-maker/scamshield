@@ -265,54 +265,6 @@ export function ScanResults({
       </div>
 
       {/* ---- Financial Risk Panel ---- */}
-      {financialRisk && financialRisk.riskScore >= 3 && (
-        <div className="glass-card p-5" data-tour="financial-risk">
-          <div className="flex items-center gap-2 mb-4">
-            <DollarSign size={18} className="text-danger" />
-            <h3 className="text-base font-semibold text-text-primary">Financial Risk Assessment</h3>
-            <span className={clsx(
-              "ml-auto text-xs font-mono font-bold px-2 py-0.5 rounded-full",
-              financialRisk.riskScore >= 8 ? "bg-danger/20 text-danger" :
-              financialRisk.riskScore >= 5 ? "bg-caution/20 text-caution" :
-              "bg-safe/20 text-safe"
-            )}>
-              {financialRisk.riskScore.toFixed(1)}/10
-            </span>
-          </div>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4">
-            <div className="p-3 rounded-lg bg-abyss/60 border border-border/40">
-              <div className="text-xs text-text-muted mb-1">Risk Type</div>
-              <div className="text-sm font-semibold text-text-primary capitalize">
-                {financialRisk.riskType.replaceAll("_", " ")}
-              </div>
-            </div>
-            <div className="p-3 rounded-lg bg-abyss/60 border border-border/40">
-              <div className="text-xs text-text-muted mb-1">Est. Loss Range</div>
-              <div className="text-sm font-semibold text-danger">
-                ${financialRisk.estimatedLoss.min.toLocaleString()}–${financialRisk.estimatedLoss.max.toLocaleString()}
-              </div>
-            </div>
-            <div className="p-3 rounded-lg bg-abyss/60 border border-border/40">
-              <div className="text-xs text-text-muted mb-1">Sophistication</div>
-              <div className="text-sm font-semibold text-text-primary">
-                {financialRisk.sophisticationScore >= 0.7 ? "High" :
-                 financialRisk.sophisticationScore >= 0.4 ? "Medium" : "Low"}
-              </div>
-            </div>
-          </div>
-          {financialRisk.recommendedActions.length > 0 && (
-            <div className="space-y-1.5">
-              <div className="text-xs font-semibold text-text-muted uppercase tracking-wider mb-2">Recommended Actions</div>
-              {financialRisk.recommendedActions.slice(0, 4).map((action, i) => (
-                <div key={i} className="flex items-start gap-2 text-xs text-text-secondary">
-                  <span className="shrink-0 mt-1.5 w-1.5 h-1.5 rounded-full bg-shield/60" />
-                  {action}
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      )}
 
       {/* ---- URL Deep Analysis Panel ---- */}
       {urlDeepAnalysis && urlDeepAnalysis.overallRiskScore > 0.2 && (

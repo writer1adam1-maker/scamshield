@@ -25,24 +25,26 @@
   const BATCH_DELAY_MS = 600;
   const CACHE_TTL_MS = 30 * 60 * 1000; // 30 min per hostname
 
-  // Threat levels that trigger warning intercept
-  const WARN_LEVELS = new Set(['high', 'critical']);
+  // Only intercept CRITICAL links — high just gets a red dot, no popup
+  const WARN_LEVELS = new Set(['critical']);
   // Threat levels that show non-green dot
   const RISKY_LEVELS = new Set(['low', 'medium', 'high', 'critical']);
 
   // ── State ─────────────────────────────────────────────────────────────────
-  const hostCache = new Map();       // hostname → { level, score, category, ts }
-  const pendingHosts = new Set();    // currently in-flight
-  const dotMap = new WeakMap();      // <a> → dot element
+  const hostCache = new Map();
+  const pendingHosts = new Set();
+  const dotMap = new WeakMap();
   let apiKey = null;
   let enabled = true;
+  let warningsDisabled = false;
   let hoverCard = null;
 
-  // ── Load API key & enabled flag from storage ─────────────────────────────
+  // ── Load settings ─────────────────────────────────────────────────────────
   let noKeyWarningShown = false;
-  chrome.storage.sync.get(['ss_api_key', 'ss_enabled'], function (data) {
+  chrome.storage.sync.get(['ss_api_key', 'ss_enabled', 'ss_warnings_disabled'], function (data) {
     apiKey = data.ss_api_key || null;
-    enabled = data.ss_enabled !== false; // default true
+    enabled = data.ss_enabled !== false;
+    warningsDisabled = data.ss_warnings_disabled === true;
     if (enabled) init();
   });
 
@@ -304,7 +306,7 @@
     if (hoverCard) hoverCard.classList.remove('ss-visible');
   }
 
-  // ── Click intercept for high/critical links ───────────────────────────────
+  // ── Click intercept for CRITICAL links only ──────────────────────────────
   function onLinkClick(e) {
     var a = e.target.closest('a[href]');
     if (!a) return;
@@ -312,27 +314,29 @@
     if (!host) return;
     var cached = getCached(host);
     if (!cached || !WARN_LEVELS.has(cached.level)) return;
+    if (warningsDisabled) return;
 
     e.preventDefault();
     e.stopPropagation();
-    showWarning(a.href, cached.level, cached.score);
+    showWarning(a.href, cached.score);
   }
 
-  function showWarning(href, level, score) {
+  function showWarning(href, score) {
     var overlay = document.createElement('div');
     overlay.className = 'ss-warning-overlay';
+    overlay.addEventListener('click', function (e) { if (e.target === overlay) overlay.remove(); });
 
     var box = document.createElement('div');
     box.className = 'ss-warning-box';
 
     var icon = document.createElement('div');
     icon.className = 'ss-warning-icon';
-    icon.textContent = level === 'critical' ? '☠️' : '⚠️';
+    icon.textContent = '☠️';
     box.appendChild(icon);
 
     var title = document.createElement('div');
     title.className = 'ss-warning-title';
-    title.textContent = level === 'critical' ? 'CRITICAL THREAT DETECTED' : 'HIGH RISK LINK';
+    title.textContent = 'CRITICAL THREAT DETECTED';
     box.appendChild(title);
 
     var scoreEl = document.createElement('div');
@@ -357,13 +361,25 @@
     var proceedBtn = document.createElement('button');
     proceedBtn.className = 'ss-btn-proceed';
     proceedBtn.textContent = 'Proceed anyway';
-    proceedBtn.addEventListener('click', function () {
-      overlay.remove();
-      window.location.href = href;
-    });
+    proceedBtn.addEventListener('click', function () { overlay.remove(); window.location.href = href; });
     actions.appendChild(proceedBtn);
 
     box.appendChild(actions);
+
+    var neverRow = document.createElement('div');
+    neverRow.style.cssText = 'margin-top:12px;display:flex;align-items:center;justify-content:center;gap:6px;';
+    var neverChk = document.createElement('input');
+    neverChk.type = 'checkbox'; neverChk.id = 'ss-never-warn'; neverChk.style.cursor = 'pointer';
+    var neverLbl = document.createElement('label');
+    neverLbl.htmlFor = 'ss-never-warn';
+    neverLbl.textContent = 'Never show these warnings again';
+    neverLbl.style.cssText = 'font-size:11px;color:#6e7681;cursor:pointer;';
+    neverChk.addEventListener('change', function () {
+      if (neverChk.checked) { warningsDisabled = true; chrome.storage.sync.set({ ss_warnings_disabled: true }); }
+    });
+    neverRow.appendChild(neverChk); neverRow.appendChild(neverLbl);
+    box.appendChild(neverRow);
+
     overlay.appendChild(box);
     document.documentElement.appendChild(overlay);
   }

@@ -175,10 +175,7 @@
         if (formDomain && formDomain !== currentDomain) {
           e.preventDefault();
           e.stopPropagation();
-
-          // Show safe warning (no server data in alert)
-          var msg = 'ScamShield blocked a form submission to: ' + formDomain;
-          alert(msg);
+          console.warn('ScamShield: blocked form submission to external domain:', formDomain);
         }
       } catch (err) { }
     }, true);
@@ -207,26 +204,9 @@
 
   function applyWarnProtections(rules) {
     var warnRules = rules.filter(function (r) { return r.type === 'warn'; });
-    if (warnRules.length === 0) return;
-
-    warnRules.forEach(function (rule) {
-      var bar = document.createElement('div');
-      bar.style.cssText = 'position:fixed;top:0;left:0;right:0;background:#fff3cd;border-bottom:3px solid #ffc107;padding:12px 16px;z-index:999999;font-family:Arial,sans-serif;font-size:14px;color:#856404;box-shadow:0 2px 4px rgba(0,0,0,0.1);display:flex;justify-content:space-between;align-items:center;';
-
-      var text = document.createElement('span');
-      text.textContent = rule.message || 'ScamShield Warning: Suspicious content detected';
-      bar.appendChild(text);
-
-      var btn = document.createElement('button');
-      btn.textContent = 'Dismiss';
-      btn.style.cssText = 'background:#ffc107;border:none;padding:6px 12px;cursor:pointer;border-radius:4px;font-weight:bold;';
-      btn.addEventListener('click', function () { bar.remove(); });
-      bar.appendChild(btn);
-
-      if (document.body) {
-        document.body.insertBefore(bar, document.body.firstChild);
-      }
-    });
+    if (warnRules.length > 0) {
+      console.warn('ScamShield: ' + warnRules.length + ' warning(s) on this page');
+    }
   }
 
   function applySandboxProtections(rules) {
