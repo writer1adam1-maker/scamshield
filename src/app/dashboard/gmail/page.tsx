@@ -205,10 +205,16 @@ export default function GmailShieldPage() {
                 <div className="text-xl font-bold font-mono text-shield">{status.emailsScannedTotal ?? 0}</div>
                 <div className="text-[10px] text-text-muted mt-0.5">Emails Scanned</div>
               </div>
-              <div className="p-3 rounded-xl bg-abyss/60 border border-border/40 text-center">
+              <button
+                onClick={() => { setShowThreatsOnly(true); }}
+                className="p-3 rounded-xl bg-abyss/60 border border-border/40 text-center hover:border-danger/40 transition-colors cursor-pointer"
+              >
                 <div className="text-xl font-bold font-mono text-danger">{status.threatsFoundTotal ?? 0}</div>
                 <div className="text-[10px] text-text-muted mt-0.5">Threats Found</div>
-              </div>
+                {(status.threatsFoundTotal ?? 0) > 0 && (
+                  <div className="text-[9px] text-danger mt-1">Click to view</div>
+                )}
+              </button>
               <div className="p-3 rounded-xl bg-abyss/60 border border-border/40 text-center">
                 <div className="text-xs font-mono text-text-secondary mt-1">
                   {status.lastPolledAt
@@ -345,34 +351,76 @@ export default function GmailShieldPage() {
             </div>
           ) : (
             <div className="space-y-2">
-              {results.map((r) => (
-                <div
-                  key={r.id}
-                  className={clsx(
-                    "flex items-start gap-3 p-3 rounded-xl border text-sm",
-                    LEVEL_COLORS[r.threat_level] ?? "text-text-secondary border-border bg-abyss/40"
-                  )}
-                >
-                  <div className="shrink-0 mt-0.5">
-                    {r.threat_level === "HIGH" || r.threat_level === "CRITICAL" ? (
-                      <AlertTriangle size={14} />
-                    ) : (
-                      <CheckCircle2 size={14} />
+              {results.map((r) => {
+                const isThreat = r.threat_level === "HIGH" || r.threat_level === "CRITICAL";
+                const isMedium = r.threat_level === "MEDIUM";
+                return (
+                  <div
+                    key={r.id}
+                    className={clsx(
+                      "rounded-xl border text-sm transition-all",
+                      isThreat ? "border-danger/30 bg-danger/5" : isMedium ? "border-caution/20 bg-caution/5" : "border-border bg-abyss/40",
+                    )}
+                  >
+                    <div className="flex items-start gap-3 p-3">
+                      <div className="shrink-0 mt-0.5">
+                        {isThreat ? (
+                          <AlertTriangle size={14} className="text-danger" />
+                        ) : isMedium ? (
+                          <AlertTriangle size={14} className="text-caution" />
+                        ) : (
+                          <CheckCircle2 size={14} className="text-safe" />
+                        )}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className={clsx("font-medium text-xs truncate", isThreat ? "text-danger" : isMedium ? "text-caution" : "text-text-secondary")}>
+                          {r.subject_preview || "(No subject)"}
+                        </div>
+                        <div className="text-[10px] text-text-muted mt-0.5">
+                          {r.sender_domain || "unknown"} · {r.category.replace(/_/g, " ")}
+                        </div>
+                      </div>
+                      <div className="shrink-0 flex flex-col items-end gap-1">
+                        <span className={clsx(
+                          "text-[10px] font-mono font-bold px-1.5 py-0.5 rounded border",
+                          isThreat ? "text-danger border-danger/30 bg-danger/10" : isMedium ? "text-caution border-caution/30 bg-caution/10" : "text-safe border-safe/30 bg-safe/10",
+                        )}>
+                          {r.score}/100
+                        </span>
+                        <span className="text-[9px] font-mono text-text-muted">
+                          {new Date(r.scanned_at).toLocaleDateString()}
+                        </span>
+                      </div>
+                    </div>
+                    {/* Expanded detail for threats */}
+                    {(isThreat || isMedium) && (
+                      <div className={clsx("px-3 pb-3 pt-0 border-t", isThreat ? "border-danger/10" : "border-caution/10")}>
+                        <div className="flex flex-wrap gap-2 mt-2">
+                          <span className={clsx("text-[10px] font-mono px-2 py-0.5 rounded-full border", isThreat ? "bg-danger/10 text-danger border-danger/20" : "bg-caution/10 text-caution border-caution/20")}>
+                            {r.threat_level}
+                          </span>
+                          <span className="text-[10px] font-mono px-2 py-0.5 rounded-full border border-border bg-obsidian/40 text-text-muted">
+                            {r.category.replace(/_/g, " ")}
+                          </span>
+                          <span className="text-[10px] font-mono px-2 py-0.5 rounded-full border border-border bg-obsidian/40 text-text-muted">
+                            from: {r.sender_domain || "unknown"}
+                          </span>
+                          {r.received_at && (
+                            <span className="text-[10px] font-mono px-2 py-0.5 rounded-full border border-border bg-obsidian/40 text-text-muted">
+                              received: {new Date(r.received_at).toLocaleString()}
+                            </span>
+                          )}
+                        </div>
+                        <p className={clsx("text-[10px] mt-2", isThreat ? "text-danger/80" : "text-caution/80")}>
+                          {isThreat
+                            ? "This email shows strong indicators of phishing, fraud, or social engineering. Do not click links or provide personal information."
+                            : "This email contains some suspicious patterns. Review carefully before taking action."}
+                        </p>
+                      </div>
                     )}
                   </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="font-medium text-xs truncate">
-                      {r.subject_preview || "(No subject)"}
-                    </div>
-                    <div className="text-[10px] opacity-70 mt-0.5">
-                      {r.sender_domain || "unknown"} · {r.category.replace(/_/g, " ")} · Score {r.score}
-                    </div>
-                  </div>
-                  <div className="shrink-0 text-[10px] font-mono opacity-60">
-                    {new Date(r.scanned_at).toLocaleDateString()}
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </section>
