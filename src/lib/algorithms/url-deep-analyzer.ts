@@ -15,23 +15,18 @@ import {
 // Constants
 // ---------------------------------------------------------------------------
 
+// Only real brand names that attackers impersonate via typosquatting/lookalike domains.
+// Each entry must be 5+ chars to avoid matching random short words in domains.
+// Do NOT include generic words (scam, fraud, hack, etc.) — those cause false positives.
 const KNOWN_BRANDS = [
-  // Real brand names
   'google', 'facebook', 'amazon', 'apple', 'microsoft', 'paypal', 'netflix',
   'instagram', 'twitter', 'linkedin', 'youtube', 'yahoo', 'outlook', 'hotmail',
-  'chase', 'bankofamerica', 'wellsfargo', 'citibank', 'capitalone', 'usbank',
-  'venmo', 'zelle', 'cashapp', 'coinbase', 'binance', 'blockchain',
-  'usps', 'fedex', 'ups', 'dhl', 'walmart', 'target', 'bestbuy',
-  'irs', 'ssa', 'dmv', 'medicare', 'healthcare',
-  'dropbox', 'icloud', 'onedrive', 'spotify', 'hulu', 'disney',
-  'tiktok', 'snapchat', 'whatsapp', 'telegram', 'signal',
-  'metamask', 'opensea', 'uniswap', 'phantom',
-  // Real typosquatting variants observed in the wild (Levenshtein distance checks)
-  'microsft', 'micros0ft', 'gooogle', 'g00gle', 'amaz0n', 'amazom',
-  'paypa1', 'paypai', 'faceb00k', 'faceobok', 'netfllix', 'appie',
-  // Phishing subdomain prefixes used as domain names
-  'icloud-verify', 'wellsfargo-secure', 'chase-login', 'citibank-alert',
-  'coinbase-support', 'binance-secure',
+  'chase', 'bankofamerica', 'wellsfargo', 'citibank', 'capitalone',
+  'venmo', 'zelle', 'cashapp', 'coinbase', 'binance',
+  'fedex', 'walmart', 'target', 'bestbuy',
+  'dropbox', 'icloud', 'onedrive', 'spotify', 'disney',
+  'tiktok', 'snapchat', 'whatsapp', 'telegram',
+  'metamask', 'opensea', 'uniswap',
 ];
 
 const SUSPICIOUS_PARAMS = [
@@ -512,33 +507,38 @@ function brandDistanceAnalysis(domain: string): {
   score: number;
   detectedBrands: { brand: string; distance: number }[];
 } {
-  const domainLower = domain.toLowerCase().replace(/[^a-z0-9]/g, '');
+  // Extract the registered domain (SLD) — the part that matters for brand impersonation.
+  // "support.google.com" → registeredDomain="google", fullStripped="supportgooglecom"
+  // "fake-paypal-login.xyz" → registeredDomain="fakepaypallogin", fullStripped same
+  const parts = domain.toLowerCase().replace(/^www\./, '').split('.');
+  // SLD is the second-to-last part (before TLD), or the whole thing for 2-part domains
+  const sld = parts.length >= 2 ? parts[parts.length - 2] : parts[0];
+  const sldClean = sld.replace(/[^a-z0-9]/g, '');
+
   const detected: { brand: string; distance: number }[] = [];
   let minNormalizedDistance = 1;
 
   for (const brand of KNOWN_BRANDS) {
-    const distance = levenshteinDistance(domainLower, brand);
-    const maxLen = Math.max(domainLower.length, brand.length);
+    // Skip if the SLD IS the brand (google.com → sld="google" = brand "google" → NOT suspicious)
+    if (sldClean === brand) continue;
+
+    // Levenshtein: catch typosquats like "gooogle.com", "paypai.com"
+    const distance = levenshteinDistance(sldClean, brand);
+    const maxLen = Math.max(sldClean.length, brand.length);
     const normalizedDistance = maxLen > 0 ? distance / maxLen : 0;
 
-    // If the domain is close to a brand but not exact, it's suspicious
     if (distance > 0 && distance <= 3 && normalizedDistance < 0.4) {
       detected.push({ brand, distance });
       minNormalizedDistance = Math.min(minNormalizedDistance, normalizedDistance);
     }
 
-    // Check if brand name is embedded within domain — but NOT if the domain
-    // IS the brand (e.g., "google" in "google.com" → domainLower="googlecom" or "wwwgooglecom")
-    // Strip "www" prefix before checking
-    const stripped = domainLower.replace(/^www/, '');
-    const isActualBrand = stripped === brand || stripped === brand + 'com' || stripped === brand + 'org' || stripped === brand + 'net' || stripped === brand + 'gov' || stripped === brand + 'io';
-    if (domainLower.includes(brand) && !isActualBrand) {
+    // Brand embedded in SLD: "paypal-secure-login" contains "paypal" but SLD != "paypal"
+    if (sldClean.includes(brand) && sldClean !== brand && sldClean.length > brand.length + 3) {
       detected.push({ brand, distance: 0.5 });
       minNormalizedDistance = Math.min(minNormalizedDistance, 0.15);
     }
   }
 
-  // Score: inverse of minimum distance (closer = more suspicious)
   let score = 0;
   if (detected.length > 0) {
     score = Math.max(0, 1 - minNormalizedDistance * 2.5);
@@ -569,8 +569,11 @@ function subdomainScore(
   }
 
   // Brand name in subdomain (classic brand-in-subdomain attack)
+  // e.g. "paypal.suspicious-site.com" → "paypal" in subdomain, domain is NOT paypal → suspicious
+  // But "support.google.com" → domain IS google → NOT suspicious (it's a real subdomain)
+  const domainSld = domain.toLowerCase().split('.').slice(-2, -1)[0] || '';
   for (const brand of KNOWN_BRANDS) {
-    if (subLower.includes(brand)) {
+    if (subLower.includes(brand) && domainSld !== brand) {
       score += 0.4;
       break;
     }
