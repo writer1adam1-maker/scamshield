@@ -29,6 +29,49 @@ import { detectLinguisticDeception } from './linguistic-deception';
 import { analyzeConversationArc } from './conversation-arc';
 
 // ---------------------------------------------------------------------------
+// Trusted domains — never flag these as scams even if URL contains scam words
+// These are major legitimate sites; the pattern engine should not score them.
+// ---------------------------------------------------------------------------
+const TRUSTED_DOMAINS = new Set([
+  'google.com', 'www.google.com', 'youtube.com', 'www.youtube.com',
+  'facebook.com', 'www.facebook.com', 'twitter.com', 'x.com',
+  'instagram.com', 'www.instagram.com', 'linkedin.com', 'www.linkedin.com',
+  'reddit.com', 'www.reddit.com', 'wikipedia.org', 'en.wikipedia.org',
+  'amazon.com', 'www.amazon.com', 'apple.com', 'www.apple.com',
+  'microsoft.com', 'www.microsoft.com', 'github.com', 'www.github.com',
+  'stackoverflow.com', 'www.stackoverflow.com',
+  'netflix.com', 'www.netflix.com', 'spotify.com', 'www.spotify.com',
+  'paypal.com', 'www.paypal.com', 'ebay.com', 'www.ebay.com',
+  'yahoo.com', 'www.yahoo.com', 'bing.com', 'www.bing.com',
+  'bbc.com', 'www.bbc.com', 'cnn.com', 'www.cnn.com',
+  'nytimes.com', 'www.nytimes.com', 'theguardian.com',
+  'fbi.gov', 'www.fbi.gov', 'irs.gov', 'www.irs.gov',
+  'whitehouse.gov', 'www.whitehouse.gov', 'usa.gov',
+  'cloudflare.com', 'aws.amazon.com', 'azure.microsoft.com',
+  'docs.google.com', 'drive.google.com', 'mail.google.com',
+  'outlook.com', 'outlook.live.com', 'live.com',
+  'zoom.us', 'slack.com', 'discord.com', 'twitch.tv',
+  'tiktok.com', 'www.tiktok.com', 'pinterest.com',
+  'whatsapp.com', 'web.whatsapp.com', 'signal.org',
+  'dropbox.com', 'www.dropbox.com', 'notion.so',
+  'stripe.com', 'paddle.com', 'vercel.com', 'netlify.com',
+  'supabase.com', 'firebase.google.com', 'heroku.com',
+]);
+
+function isTrustedDomain(url: string): boolean {
+  try {
+    const hostname = new URL(url).hostname.toLowerCase();
+    if (TRUSTED_DOMAINS.has(hostname)) return true;
+    // Check if it's a subdomain of a trusted domain
+    const parts = hostname.split('.');
+    for (let i = 1; i < parts.length; i++) {
+      if (TRUSTED_DOMAINS.has(parts.slice(i).join('.'))) return true;
+    }
+    return false;
+  } catch { return false; }
+}
+
+// ---------------------------------------------------------------------------
 // Input preprocessing: URL normalization, text cleaning, encoding detection
 // ---------------------------------------------------------------------------
 function preprocessInput(input: AnalysisInput): AnalysisInput {
@@ -588,6 +631,36 @@ export async function analyzeWithVERIDICT(input: AnalysisInput): Promise<VERIDIC
 
   // --- Input preprocessing ---
   const processedInput = preprocessInput(input);
+
+  // --- Trusted domain fast path ---
+  // URL-only inputs to known-safe domains (google.com, fbi.gov, etc.)
+  // should return safe immediately. The URL text itself (query params,
+  // path segments) would otherwise trigger false positives.
+  const isUrlOnlyInput = processedInput.url && !processedInput.emailBody && !processedInput.smsBody && !processedInput.screenshotOcrText;
+  const textIsJustUrl = processedInput.text === processedInput.url || processedInput.text === input.url;
+  if (isUrlOnlyInput && textIsJustUrl && processedInput.url && isTrustedDomain(processedInput.url)) {
+    const elapsed = performance.now() - startTime;
+    return {
+      score: 0,
+      threatLevel: 'SAFE',
+      category: 'GENERIC',
+      evidence: [{ layer: 'Trust', finding: 'Trusted domain', severity: 'low' as const, detail: `${new URL(processedInput.url).hostname} is a known legitimate domain` }],
+      layerScores: { fisher: 0, conservation: 0, cascadeBreaker: 0, immune: 0 },
+      confidenceInterval: { lower: 0, upper: 5, confidence: 0.99 },
+      overallConfidence: 0.99,
+      processingTimeMs: Math.round(elapsed * 100) / 100,
+      inputType: 'url',
+      threatSeverity: { severity: 'none' as any, numericSeverity: 0, estimatedMaxLoss: '$0', description: 'Trusted domain', color: 'green', label: 'Safe' },
+      metaAnalysis: { agreementScore: 1, layerConsensus: 'unanimous' as any, reliability: 'high' as any, flags: [] },
+      similarKnownScam: null,
+      layerDetails: {
+        fisher: { score: 0, earlyStopTriggered: true, signalCount: 0, signals: [] },
+        conservation: { score: 0, violations: [] },
+        cascadeBreaker: { score: 0, breakers: [] },
+        immune: { score: 0, matchedAntibodies: [], noveltyScore: 0 },
+      },
+    } as unknown as VERIDICTResult;
+  }
 
   // Collect all text for category classification
   const allText = [processedInput.text, processedInput.emailBody, processedInput.smsBody, processedInput.screenshotOcrText]

@@ -527,8 +527,12 @@ function brandDistanceAnalysis(domain: string): {
       minNormalizedDistance = Math.min(minNormalizedDistance, normalizedDistance);
     }
 
-    // Check if brand name is embedded within domain
-    if (domainLower.includes(brand) && domainLower !== brand) {
+    // Check if brand name is embedded within domain — but NOT if the domain
+    // IS the brand (e.g., "google" in "google.com" → domainLower="googlecom" or "wwwgooglecom")
+    // Strip "www" prefix before checking
+    const stripped = domainLower.replace(/^www/, '');
+    const isActualBrand = stripped === brand || stripped === brand + 'com' || stripped === brand + 'org' || stripped === brand + 'net' || stripped === brand + 'gov' || stripped === brand + 'io';
+    if (domainLower.includes(brand) && !isActualBrand) {
       detected.push({ brand, distance: 0.5 });
       minNormalizedDistance = Math.min(minNormalizedDistance, 0.15);
     }
