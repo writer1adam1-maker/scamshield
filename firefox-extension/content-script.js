@@ -24,9 +24,17 @@
   if (window._scamshieldContentScriptLoaded) return;
   window._scamshieldContentScriptLoaded = true;
 
-  // ─── ANNOUNCE EXTENSION PRESENCE TO VACCINE PAGE ───
-  if (window.location.hostname === 'scamshieldy.com' || window.location.hostname === 'scamshield-green.vercel.app') {
+  // ─── ANNOUNCE EXTENSION PRESENCE + RESPOND TO PINGS ───
+  var _isOurDomain = window.location.hostname === 'scamshieldy.com' || window.location.hostname === 'scamshield-green.vercel.app';
+  if (_isOurDomain) {
     window.postMessage({ type: 'SCAMSHIELDY_EXTENSION_PRESENT', version: '2.0.0' }, window.location.origin);
+    setTimeout(function () { window.postMessage({ type: 'SCAMSHIELDY_EXTENSION_PRESENT', version: '2.0.0' }, window.location.origin); }, 400);
+    window.addEventListener('message', function (e) {
+      if (e.origin !== window.location.origin) return;
+      if (e.data && e.data.type === 'SCAMSHIELDY_PING') {
+        window.postMessage({ type: 'SCAMSHIELDY_PONG', version: '2.0.0' }, window.location.origin);
+      }
+    });
   }
 
   // ─── NOTIFY BACKGROUND SCRIPT ───

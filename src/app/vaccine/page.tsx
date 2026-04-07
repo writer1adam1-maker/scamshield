@@ -183,13 +183,19 @@ export default function VaccinePage() {
   const [extensionDetected, setExtensionDetected] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  // Detect if ScamShieldy extension is installed
+  // Detect if ScamShieldy extension is installed via ping/pong
   useEffect(() => {
     const handler = (e: MessageEvent) => {
-      if (e.data?.type === 'SCAMSHIELDY_EXTENSION_PRESENT') setExtensionDetected(true);
+      if (e.data?.type === 'SCAMSHIELDY_EXTENSION_PRESENT' || e.data?.type === 'SCAMSHIELDY_PONG') {
+        setExtensionDetected(true);
+      }
     };
     window.addEventListener('message', handler);
-    return () => window.removeEventListener('message', handler);
+    // Ping the extension — content script will respond with PONG
+    window.postMessage({ type: 'SCAMSHIELDY_PING' }, window.location.origin);
+    // Retry after 800ms in case content script wasn't ready yet
+    const t = setTimeout(() => window.postMessage({ type: 'SCAMSHIELDY_PING' }, window.location.origin), 800);
+    return () => { window.removeEventListener('message', handler); clearTimeout(t); };
   }, []);
 
   async function handleScan() {
@@ -549,16 +555,20 @@ export default function VaccinePage() {
       {/* Script Modal */}
       {scriptModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-void/80 backdrop-blur-sm">
-          <div className="glass-card w-full max-w-2xl max-h-[90vh] flex flex-col border border-shield/30">
-            <div className="flex items-center gap-3 p-5 border-b border-white/5">
+          <div className="glass-card w-full max-w-2xl max-h-[90vh] flex flex-col border border-shield/30 overflow-hidden">
+            <div className="relative flex items-center gap-3 p-5 pr-14 border-b border-white/5">
               <div className="w-9 h-9 rounded-lg bg-shield/10 border border-shield/20 flex items-center justify-center shrink-0">
                 <ShieldCheck size={18} className="text-shield" />
               </div>
-              <div className="flex-1 min-w-0">
+              <div className="min-w-0 overflow-hidden">
                 <h2 className="text-base font-semibold text-text-primary truncate">Vaccine Ready — {scriptModal.modules.length} modules active</h2>
-                <p className="text-xs text-text-muted font-mono truncate">{scriptModal.url}</p>
+                <p className="text-xs text-text-muted font-mono truncate max-w-full">{scriptModal.url}</p>
               </div>
-              <button onClick={() => setScriptModal(null)} className="shrink-0 w-8 h-8 flex items-center justify-center rounded-lg hover:bg-white/5 text-text-muted hover:text-text-primary text-lg transition-colors">✕</button>
+              {/* Close button — absolutely anchored, never pushed off-screen */}
+              <button
+                onClick={() => setScriptModal(null)}
+                className="absolute top-4 right-4 w-8 h-8 flex items-center justify-center rounded-lg bg-white/5 hover:bg-white/10 text-text-muted hover:text-text-primary text-base transition-colors"
+              >✕</button>
             </div>
 
             <div className="px-5 pt-4 pb-2">
