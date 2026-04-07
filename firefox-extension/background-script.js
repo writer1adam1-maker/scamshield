@@ -226,6 +226,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         timestamp: Date.now(),
       };
       setVaccineCache(originKey, syntheticVaccine);
+      chrome.storage.local.set({ ss_last_vaccine: { url: storeUrl, rules: rules, timestamp: Date.now() } });
       console.log('ScamShield: Vaccine stored for', originKey, '—', rules.length, 'rules');
     }
     sendResponse({ status: 'stored' });
@@ -237,7 +238,8 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   }
 
   if (request.type === 'get_vaccine_status') {
-    const vaccine = getVaccineFromCache(sender.tab && sender.tab.url);
+    const lookupUrl = request.url || (sender.tab && sender.tab.url);
+    const vaccine = getVaccineFromCache(lookupUrl);
     sendResponse({ vaccine: vaccine });
   }
 

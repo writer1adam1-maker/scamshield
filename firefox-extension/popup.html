@@ -245,6 +245,25 @@
       font-size: 11px;
     }
 
+    /* ── Vaccine banner ── */
+    .vaccine-banner { display:none; margin-bottom:12px; border-radius:10px; padding:10px 12px; border:1px solid; }
+    .vaccine-banner.active { background:rgba(0,212,255,0.06); border-color:rgba(0,212,255,0.25); }
+    .vaccine-banner.fresh  { background:rgba(34,197,94,0.08); border-color:rgba(34,197,94,0.3); animation:pulse-green 1.5s ease-in-out 3; }
+    @keyframes pulse-green { 0%,100%{box-shadow:0 0 0 0 rgba(34,197,94,0)} 50%{box-shadow:0 0 0 4px rgba(34,197,94,0.15)} }
+    .vaccine-banner-top { display:flex; align-items:center; gap:8px; margin-bottom:5px; }
+    .vaccine-dot { width:8px; height:8px; border-radius:50%; flex-shrink:0; }
+    .vaccine-dot.active { background:#00d4ff; animation:blink 2s infinite; }
+    .vaccine-dot.fresh  { background:#22c55e; animation:blink 1s infinite; }
+    @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.3} }
+    .vaccine-title { font-size:12px; font-weight:700; flex:1; }
+    .vaccine-title.active { color:#00d4ff; }
+    .vaccine-title.fresh  { color:#22c55e; }
+    .vaccine-meta { font-size:10px; color:#64748b; font-family:monospace; }
+    .vaccine-domain { font-family:monospace; font-size:10px; color:#94a3b8; }
+    .vaccine-modules { display:flex; flex-wrap:wrap; gap:4px; margin-top:6px; }
+    .vaccine-mod { font-size:9px; font-family:monospace; padding:2px 6px; border-radius:4px; background:rgba(0,212,255,0.08); border:1px solid rgba(0,212,255,0.2); color:#00d4ff; }
+    .vaccine-mod.fresh { background:rgba(34,197,94,0.08); border-color:rgba(34,197,94,0.2); color:#22c55e; }
+
     /* ── Footer ── */
     .footer {
       padding: 8px 16px;
@@ -274,6 +293,17 @@
 
   <!-- Body -->
   <div class="body">
+
+    <!-- Vaccine Status Banner -->
+    <div id="vaccineBanner" class="vaccine-banner">
+      <div class="vaccine-banner-top">
+        <div id="vaccineDot" class="vaccine-dot active"></div>
+        <div id="vaccineTitle" class="vaccine-title active"></div>
+        <div id="vaccineMeta" class="vaccine-meta"></div>
+      </div>
+      <div id="vaccineDomain" class="vaccine-domain"></div>
+      <div id="vaccineModules" class="vaccine-modules"></div>
+    </div>
 
     <!-- Input -->
     <div class="input-label">Scan URL or paste text</div>

@@ -243,14 +243,45 @@ if (settingsLink) {
   });
 }
 
+// ── Vaccine status banner ──────────────────────────────────────────────────────
+var vaccineBanner  = document.getElementById("vaccineBanner");
+var vaccineDot     = document.getElementById("vaccineDot");
+var vaccineTitle   = document.getElementById("vaccineTitle");
+var vaccineMeta    = document.getElementById("vaccineMeta");
+var vaccineDomain  = document.getElementById("vaccineDomain");
+var vaccineModules = document.getElementById("vaccineModules");
+
+function showVaccineBanner(isFresh, url, rules, timestamp) {
+  var origin = url;
+  try { origin = new URL(url).hostname; } catch {}
+  var cls = isFresh ? "fresh" : "active";
+  vaccineBanner.className = "vaccine-banner " + cls;
+  vaccineDot.className = "vaccine-dot " + cls;
+  vaccineTitle.className = "vaccine-title " + cls;
+  vaccineTitle.textContent = isFresh ? "🛡 Vaccine just received!" : "🛡 Vaccine active";
+  vaccineDomain.textContent = origin;
+  var age = Math.round((Date.now() - (timestamp || 0)) / 60000);
+  vaccineMeta.textContent = isFresh ? "just now" : (age < 60 ? age + "m ago" : Math.round(age/60) + "h ago");
+  while (vaccineModules.firstChild) vaccineModules.removeChild(vaccineModules.firstChild);
+  var types = {};
+  (rules || []).forEach(function(r) { types[r.type] = (types[r.type] || 0) + 1; });
+  Object.keys(types).forEach(function(t) {
+    var span = document.createElement("span");
+    span.className = "vaccine-mod " + (isFresh ? "fresh" : "");
+    span.textContent = t + " ×" + types[t];
+    vaccineModules.appendChild(span);
+  });
+  vaccineBanner.style.display = "block";
+}
+
 // ── Auto-fill current tab URL on open ─────────────────────────────────────────
 document.addEventListener("DOMContentLoaded", () => {
   // Check for pre-scan content from context menu
   if (typeof chrome !== "undefined" && chrome.storage) {
-    chrome.storage.session.get('ss_popup_prescan', function (data) {
+    chrome.storage.local.get('ss_popup_prescan', function (data) {
       if (data.ss_popup_prescan) {
         inputField.value = data.ss_popup_prescan;
-        chrome.storage.session.remove('ss_popup_prescan');
+        chrome.storage.local.remove('ss_popup_prescan');
         scan(data.ss_popup_prescan);
         return;
       }
@@ -262,7 +293,23 @@ document.addEventListener("DOMContentLoaded", () => {
       const url = tabs[0]?.url || "";
       if (url && /^https?:\/\//i.test(url)) {
         inputField.value = url;
+        chrome.runtime.sendMessage({ type: 'get_vaccine_status', url: url }, function(resp) {
+          if (chrome.runtime.lastError || !resp || !resp.vaccine) return;
+          var v = resp.vaccine;
+          var isFresh = (Date.now() - (v.timestamp || 0)) < 30000;
+          showVaccineBanner(isFresh, v.vaccine ? v.vaccine.url : url, v.rules || [], v.timestamp);
+        });
       }
+    });
+  }
+
+  // Check for freshly received vaccine
+  if (typeof chrome !== "undefined" && chrome.storage) {
+    chrome.storage.local.get('ss_last_vaccine', function(data) {
+      var lv = data && data.ss_last_vaccine;
+      if (!lv) return;
+      var age = Date.now() - (lv.timestamp || 0);
+      if (age < 60000) showVaccineBanner(age < 20000, lv.url, lv.rules || [], lv.timestamp);
     });
   }
 });

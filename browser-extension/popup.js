@@ -243,6 +243,42 @@ if (settingsLink) {
   });
 }
 
+// ── Vaccine status banner ──────────────────────────────────────────────────────
+const vaccineBanner  = document.getElementById("vaccineBanner");
+const vaccineDot     = document.getElementById("vaccineDot");
+const vaccineTitle   = document.getElementById("vaccineTitle");
+const vaccineMeta    = document.getElementById("vaccineMeta");
+const vaccineDomain  = document.getElementById("vaccineDomain");
+const vaccineModules = document.getElementById("vaccineModules");
+
+function showVaccineBanner(isFresh, url, rules, timestamp) {
+  var origin = url;
+  try { origin = new URL(url).hostname; } catch {}
+
+  var cls = isFresh ? "fresh" : "active";
+  vaccineBanner.className = "vaccine-banner " + cls;
+  vaccineDot.className = "vaccine-dot " + cls;
+  vaccineTitle.className = "vaccine-title " + cls;
+  vaccineTitle.textContent = isFresh ? "🛡 Vaccine just received!" : "🛡 Vaccine active";
+  vaccineDomain.textContent = origin;
+
+  var age = Math.round((Date.now() - (timestamp || 0)) / 60000);
+  vaccineMeta.textContent = isFresh ? "just now" : (age < 60 ? age + "m ago" : Math.round(age/60) + "h ago");
+
+  // Show rule types as mini modules
+  while (vaccineModules.firstChild) vaccineModules.removeChild(vaccineModules.firstChild);
+  var types = {};
+  (rules || []).forEach(function(r) { types[r.type] = (types[r.type] || 0) + 1; });
+  Object.keys(types).forEach(function(t) {
+    var span = document.createElement("span");
+    span.className = "vaccine-mod " + (isFresh ? "fresh" : "");
+    span.textContent = t + " ×" + types[t];
+    vaccineModules.appendChild(span);
+  });
+
+  vaccineBanner.style.display = "block";
+}
+
 // ── Auto-fill current tab URL on open ─────────────────────────────────────────
 document.addEventListener("DOMContentLoaded", () => {
   // Check for pre-scan content from context menu
@@ -262,6 +298,26 @@ document.addEventListener("DOMContentLoaded", () => {
       const url = tabs[0]?.url || "";
       if (url && /^https?:\/\//i.test(url)) {
         inputField.value = url;
+
+        // Check if a vaccine is stored for this tab's origin
+        chrome.runtime.sendMessage({ type: 'get_vaccine_status', url: url }, function(resp) {
+          if (chrome.runtime.lastError || !resp || !resp.vaccine) return;
+          var v = resp.vaccine;
+          var isFresh = (Date.now() - (v.timestamp || 0)) < 30000; // <30s = just received
+          showVaccineBanner(isFresh, v.vaccine ? v.vaccine.url : url, v.rules || [], v.timestamp);
+        });
+      }
+    });
+  }
+
+  // Also check session storage for a freshly-received vaccine notification
+  if (typeof chrome !== "undefined" && chrome.storage) {
+    chrome.storage.session.get('ss_last_vaccine', function(data) {
+      var lv = data && data.ss_last_vaccine;
+      if (!lv) return;
+      var age = Date.now() - (lv.timestamp || 0);
+      if (age < 60000) { // show for 60s after receipt
+        showVaccineBanner(age < 20000, lv.url, lv.rules || [], lv.timestamp);
       }
     });
   }
