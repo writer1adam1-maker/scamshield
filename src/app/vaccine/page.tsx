@@ -247,13 +247,13 @@ export default function VaccinePage() {
       {/* How it works — compact */}
       <div className="glass-card p-4 flex flex-wrap gap-x-6 gap-y-2 text-xs text-text-muted items-center">
         <Info size={13} className="text-shield shrink-0" />
-        <span><strong className="text-text-secondary">1.</strong> Enter a URL</span>
+        <span><strong className="text-text-secondary">1.</strong> Scan — detect threats</span>
         <span className="text-white/10">→</span>
-        <span><strong className="text-text-secondary">2.</strong> We scrape and analyze threats</span>
+        <span><strong className="text-text-secondary">2.</strong> Choose protection modules</span>
         <span className="text-white/10">→</span>
-        <span><strong className="text-text-secondary">3.</strong> Choose protection modules</span>
+        <span><strong className="text-text-secondary">3.</strong> Vaccinate — generate protection script</span>
         <span className="text-white/10">→</span>
-        <span><strong className="text-text-secondary">4.</strong> Copy the vaccine script → paste in console or use extension</span>
+        <span><strong className="text-text-secondary">4.</strong> Paste in console or auto-inject via extension</span>
       </div>
 
       {/* Scan Input */}
@@ -277,7 +277,7 @@ export default function VaccinePage() {
             disabled={loading || !url.trim()}
             className="w-full sm:w-auto px-6 py-3 rounded-xl bg-shield/15 border border-shield/25 text-shield font-semibold text-sm hover:bg-shield/20 disabled:opacity-40 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-2 shrink-0"
           >
-            {loading ? <><Loader2 size={15} className="animate-spin" />Scanning…</> : <><Syringe size={15} />Scan &amp; Vaccinate</>}
+            {loading ? <><Loader2 size={15} className="animate-spin" />Scanning…</> : <><Shield size={15} />Scan for Threats</>}
           </button>
         </div>
       </div>
@@ -297,10 +297,10 @@ export default function VaccinePage() {
             <Shield size={44} className="text-shield animate-pulse" />
             <div className="absolute inset-0 bg-shield/20 rounded-full blur-xl animate-pulse" />
           </div>
-          <p className="text-text-primary font-medium">Scraping &amp; analyzing website…</p>
-          <p className="text-text-muted text-xs">SYNERGOS multi-layer behavioral analysis active</p>
+          <p className="text-text-primary font-medium">Analyzing URL for threats…</p>
+          <p className="text-text-muted text-xs">VERIDICT engine — 13,000+ pattern matching</p>
           <div className="flex flex-wrap justify-center gap-4 mt-1">
-            {["Scrape", "Detect", "Classify", "DNA", "Build Script"].map((s, i) => (
+            {["Patterns", "Fisher Cascade", "URL Intel", "Deception", "Classify"].map((s, i) => (
               <div key={s} className="flex flex-col items-center gap-1">
                 <div className={`w-2 h-2 rounded-full ${i < 3 ? "bg-shield animate-pulse" : "bg-slate-mid"}`} />
                 <span className="text-[9px] font-mono text-text-muted">{s}</span>
