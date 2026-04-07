@@ -6,7 +6,8 @@ import {
   XCircle, Activity, Zap, Fingerprint, Brain, Thermometer, Network,
   TrendingUp, ChevronDown, ChevronUp, Lock, Dna, Target, Clock,
   ShieldCheck, RefreshCw, Info, Phone, MessageSquare, Mail, QrCode,
-  FlaskConical, Microscope, GitBranch, Waves,
+  FlaskConical, Microscope, GitBranch, Waves, Copy, Check, Terminal,
+  ExternalLink,
 } from "lucide-react";
 import type { VaccineAnalyzeResponse, VaccineDNAResult, VaccineImmunityResult } from "@/app/api/vaccine/analyze/route";
 import { dnaSegmentColor } from "@/lib/vaccine/threat-dna";
@@ -230,6 +231,12 @@ export default function VaccinePage() {
   const [vaccines, setVaccines] = useState<VaccineRecord[] | null>(null); // null = not yet loaded
   const [error, setError] = useState<string | null>(null);
   const [showSynergos, setShowSynergos] = useState(false);
+  const [scriptModal, setScriptModal] = useState<{
+    script: string;
+    modules: string[];
+    url: string;
+    copied: boolean;
+  } | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
   // Load vaccines from localStorage on mount
@@ -295,15 +302,35 @@ export default function VaccinePage() {
     }
   }
 
-  function handleVaccinate(card: BreachCard) {
-    if (!result) return;
-    const updated = applyVaccine(card, result.url, vaccines || []);
+  async function handleVaccinate(card: BreachCard) {
+    // Save the vaccine record (localStorage)
+    const targetUrl = result?.url ?? (analyzeResult ? `scan:${analyzeResult.mode}` : "unknown");
+    const updated = applyVaccine(card, targetUrl, vaccines || []);
     setVaccines(updated);
     saveVaccines(updated);
+
+    // For website scans, also fetch + display the real protection script
+    if (result) {
+      try {
+        const res = await fetch("/api/vaccine/protect", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            url: result.url,
+            threats: result.threatsDetected,
+            rules: result.injectionRules,
+          }),
+        });
+        if (res.ok) {
+          const data = await res.json();
+          setScriptModal({ script: data.script, modules: data.modules ?? [], url: result.url, copied: false });
+        }
+      } catch { /* ignore — vaccine record still saved */ }
+    }
   }
 
-  function handleRevaccinate(card: BreachCard) {
-    handleVaccinate(card);
+  async function handleRevaccinate(card: BreachCard) {
+    await handleVaccinate(card);
   }
 
   const activeThreatLevel = result?.threatLevel.toLowerCase() ?? analyzeResult?.threatLevel ?? null;
@@ -635,6 +662,81 @@ export default function VaccinePage() {
                 ? `HMAC-SHA256 signed · ${new Date(result.signedAt).toLocaleTimeString()} · payload verified`
                 : `${currentMode.label} scan · ${new Date().toLocaleTimeString()} · local analysis`}
             </span>
+          </div>
+        </div>
+      )}
+
+      {/* Protection Script Modal */}
+      {scriptModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-void/80 backdrop-blur-sm">
+          <div className="glass-card w-full max-w-2xl max-h-[90vh] flex flex-col border border-shield/30">
+            {/* Header */}
+            <div className="flex items-center gap-3 p-5 border-b border-white/5">
+              <div className="w-9 h-9 rounded-lg bg-shield/10 border border-shield/20 flex items-center justify-center">
+                <ShieldCheck size={18} className="text-shield" />
+              </div>
+              <div className="flex-1">
+                <h2 className="text-base font-semibold text-text-primary">Vaccine Script Ready</h2>
+                <p className="text-xs text-text-muted font-mono truncate">{scriptModal.url}</p>
+              </div>
+              <button onClick={() => setScriptModal(null)} className="text-text-muted hover:text-text-primary transition-colors text-xl leading-none">✕</button>
+            </div>
+
+            {/* Modules list */}
+            <div className="px-5 pt-4 pb-2 space-y-2">
+              <p className="text-xs text-text-muted uppercase tracking-wider font-mono">Active Protection Modules ({scriptModal.modules.length})</p>
+              <div className="flex flex-wrap gap-2">
+                {scriptModal.modules.map((m) => (
+                  <span key={m} className="text-[11px] font-mono px-2 py-1 rounded-lg bg-shield/10 border border-shield/20 text-shield flex items-center gap-1">
+                    <ShieldCheck size={10} />{m}
+                  </span>
+                ))}
+              </div>
+            </div>
+
+            {/* How to use */}
+            <div className="mx-5 mb-3 p-3 rounded-lg bg-caution/5 border border-caution/20 space-y-2">
+              <p className="text-xs font-semibold text-caution flex items-center gap-1.5">
+                <Terminal size={12} /> How to apply this vaccine:
+              </p>
+              <ol className="text-xs text-text-secondary space-y-1 list-decimal list-inside">
+                <li>Copy the script below</li>
+                <li>Open <a href={scriptModal.url} target="_blank" rel="noopener noreferrer" className="text-shield hover:underline">{scriptModal.url} <ExternalLink size={10} className="inline" /></a> in a new tab</li>
+                <li>Press <kbd className="px-1 py-0.5 rounded bg-obsidian border border-border text-[10px] font-mono">F12</kbd> → Console tab → Paste → Enter</li>
+                <li className="text-text-muted">Or install the ScamShieldy Extension for automatic protection</li>
+              </ol>
+            </div>
+
+            {/* Script box */}
+            <div className="flex-1 overflow-auto mx-5 mb-3 relative">
+              <pre className="text-[10px] font-mono text-text-secondary bg-obsidian border border-border rounded-lg p-3 whitespace-pre-wrap overflow-auto max-h-64">
+                {scriptModal.script}
+              </pre>
+            </div>
+
+            {/* Actions */}
+            <div className="p-5 pt-0 flex gap-3">
+              <button
+                onClick={() => {
+                  navigator.clipboard.writeText(scriptModal.script).then(() => {
+                    setScriptModal((s) => s ? { ...s, copied: true } : null);
+                    setTimeout(() => setScriptModal((s) => s ? { ...s, copied: false } : null), 2500);
+                  });
+                }}
+                className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl bg-shield/15 border border-shield/30 text-shield font-semibold text-sm hover:bg-shield/25 transition-colors"
+              >
+                {scriptModal.copied ? <><Check size={15} />Copied!</> : <><Copy size={15} />Copy Script</>}
+              </button>
+              <a
+                href={scriptModal.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-obsidian border border-border text-text-secondary font-semibold text-sm hover:border-shield/30 transition-colors"
+              >
+                <ExternalLink size={15} />
+                Open Site
+              </a>
+            </div>
           </div>
         </div>
       )}
