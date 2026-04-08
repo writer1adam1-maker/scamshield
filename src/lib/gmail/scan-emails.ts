@@ -28,16 +28,19 @@ export async function scanEmails(
   // Process in series to avoid hitting internal algorithm rate limits
   for (const msg of messages) {
     try {
-      // Build scan input from subject + snippet only (no body)
-      const text = [
+      // Build scan input from subject + snippet + sender domain URL analysis
+      const textParts = [
         msg.subject ? `Subject: ${msg.subject}` : "",
-        msg.senderDomain ? `From domain: ${msg.senderDomain}` : "",
         msg.snippet ? msg.snippet : "",
-      ].filter(Boolean).join("\n");
+      ].filter(Boolean);
 
-      if (!text.trim()) continue;
+      const text = textParts.join("\n");
+      const url = msg.senderDomain ? `https://${msg.senderDomain}` : undefined;
 
-      const result = await runVERIDICT({ text });
+      // Need at least something to scan
+      if (!text.trim() && !url) continue;
+
+      const result = await runVERIDICT({ text: text || undefined, url });
       scanned++;
 
       const threatLevel = result.threatLevel;
