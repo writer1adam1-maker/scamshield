@@ -4,8 +4,18 @@ import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
 import {
   Shield, Users, Trash2, RefreshCw, Settings, Crown, User,
-  AlertTriangle, Loader2, CheckCircle, Brain,
+  AlertTriangle, Loader2, CheckCircle, Brain, Bell, Mail, ChevronDown, ChevronUp,
 } from "lucide-react";
+
+interface ContactMessage {
+  id: string;
+  name: string;
+  email: string;
+  subject: string;
+  message: string;
+  read: boolean;
+  created_at: string;
+}
 
 interface AdminUser {
   id: string;
@@ -55,14 +65,18 @@ export default function AdminDashboard() {
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [limitsSaved, setLimitsSaved] = useState(false);
+  const [messages, setMessages] = useState<ContactMessage[]>([]);
+  const [expandedMsg, setExpandedMsg] = useState<string | null>(null);
+  const [deletingMsgId, setDeletingMsgId] = useState<string | null>(null);
 
   const loadData = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
-      const [usersRes, configRes] = await Promise.all([
+      const [usersRes, configRes, messagesRes] = await Promise.all([
         fetch("/api/admin/users"),
         fetch("/api/admin/config"),
+        fetch("/api/admin/contact"),
       ]);
 
       if (usersRes.status === 403) {
@@ -84,11 +98,33 @@ export default function AdminDashboard() {
         for (const [k, v] of Object.entries(cfg)) newInputs[k] = String(v);
         setInputs(newInputs);
       }
+
+      if (messagesRes.ok) {
+        const data = await messagesRes.json();
+        setMessages(data.messages || []);
+      }
     } catch {
       setError("Failed to load admin data.");
     }
     setLoading(false);
   }, []);
+
+  async function markRead(id: string) {
+    await fetch("/api/admin/contact", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id, read: true }),
+    });
+    setMessages((prev) => prev.map((m) => m.id === id ? { ...m, read: true } : m));
+  }
+
+  async function deleteMessage(id: string) {
+    setDeletingMsgId(id);
+    await fetch(`/api/admin/contact?id=${id}`, { method: "DELETE" });
+    setMessages((prev) => prev.filter((m) => m.id !== id));
+    setDeletingMsgId(null);
+    if (expandedMsg === id) setExpandedMsg(null);
+  }
 
   useEffect(() => { loadData(); }, [loadData]);
 
@@ -136,6 +172,7 @@ export default function AdminDashboard() {
   const paidUsers = users.filter((u) => u.plan !== "free").length;
   const freeUsers = users.filter((u) => u.plan === "free").length;
   const totalScansToday = users.reduce((sum, u) => sum + (u.scans_today_actual || 0), 0);
+  const unreadMessages = messages.filter((m) => !m.read).length;
 
   if (loading) {
     return (
@@ -262,6 +299,83 @@ export default function AdminDashboard() {
           </button>
           <p className="text-xs text-text-muted">Changes take effect within 60 seconds.</p>
         </div>
+      </div>
+
+      {/* Notifications — Contact Messages */}
+      <div className="glass-card overflow-hidden">
+        <div className="flex items-center justify-between p-4 border-b border-border">
+          <div className="flex items-center gap-2">
+            <Bell size={16} className="text-shield" />
+            <h2 className="text-lg font-semibold text-text-primary">Notifications</h2>
+            {unreadMessages > 0 && (
+              <span className="px-2 py-0.5 rounded-full bg-danger text-white text-xs font-bold">{unreadMessages}</span>
+            )}
+          </div>
+          <span className="text-xs text-text-muted">{messages.length} total</span>
+        </div>
+
+        {messages.length === 0 ? (
+          <div className="px-4 py-8 text-center text-text-muted text-sm">No messages yet.</div>
+        ) : (
+          <div className="divide-y divide-border/50">
+            {messages.map((msg) => (
+              <div key={msg.id} className={`transition-colors ${msg.read ? "opacity-60" : "bg-shield/5"}`}>
+                <div
+                  className="flex items-start gap-3 px-4 py-3 cursor-pointer hover:bg-white/[0.02]"
+                  onClick={() => {
+                    setExpandedMsg(expandedMsg === msg.id ? null : msg.id);
+                    if (!msg.read) markRead(msg.id);
+                  }}
+                >
+                  <div className="mt-0.5">
+                    {msg.read
+                      ? <Mail size={14} className="text-text-muted" />
+                      : <Bell size={14} className="text-shield" />}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="text-sm font-medium text-text-primary">{msg.name}</span>
+                      <span className="text-xs text-text-muted font-mono">{msg.email}</span>
+                      {!msg.read && <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-shield/20 text-shield font-mono">NEW</span>}
+                    </div>
+                    <div className="text-xs text-text-secondary truncate">{msg.subject}</div>
+                    <div className="text-[11px] text-text-muted">
+                      {new Date(msg.created_at).toLocaleDateString()} · {new Date(msg.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                    </div>
+                  </div>
+                  <div className="shrink-0 text-text-muted">
+                    {expandedMsg === msg.id ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+                  </div>
+                </div>
+
+                {expandedMsg === msg.id && (
+                  <div className="px-4 pb-4 ml-5 space-y-3">
+                    <div className="p-3 rounded-lg bg-abyss/60 border border-border/50 text-sm text-text-secondary whitespace-pre-wrap leading-relaxed">
+                      {msg.message}
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <a
+                        href={`mailto:${msg.email}?subject=Re: ${encodeURIComponent(msg.subject)}`}
+                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-shield text-void text-xs font-semibold hover:bg-shield/90 transition-colors"
+                      >
+                        <Mail size={12} />
+                        Reply via Email
+                      </a>
+                      <button
+                        onClick={() => deleteMessage(msg.id)}
+                        disabled={deletingMsgId === msg.id}
+                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs text-danger hover:bg-danger/10 transition-colors disabled:opacity-50"
+                      >
+                        {deletingMsgId === msg.id ? <Loader2 size={12} className="animate-spin" /> : <Trash2 size={12} />}
+                        Delete
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Users Table */}

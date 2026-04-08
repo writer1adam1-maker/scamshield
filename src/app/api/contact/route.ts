@@ -1,7 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { Resend } from "resend";
-
-const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null;
+import { createServiceRoleClient } from "@/lib/supabase/client";
 
 // Simple in-memory rate limiter: max 3 contact submissions per IP per hour
 const rateLimitMap = new Map<string, { count: number; resetAt: number }>();
@@ -38,37 +36,25 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "All fields are required." }, { status: 400 });
   }
 
-  // Basic email format check
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
     return NextResponse.json({ error: "Invalid email address." }, { status: 400 });
   }
 
-  // Limit field lengths
   if (name.length > 100 || email.length > 200 || subject.length > 200 || message.length > 5000) {
     return NextResponse.json({ error: "One or more fields exceed the maximum length." }, { status: 400 });
   }
 
-  if (!resend) {
-    // Dev/test mode — log and succeed silently
-    console.log("[Contact]", { name, email, subject, message });
-    return NextResponse.json({ success: true });
-  }
+  const db = createServiceRoleClient();
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { error } = await (db as any).from("contact_messages").insert({
+    name: name.trim(),
+    email: email.trim(),
+    subject: subject.trim(),
+    message: message.trim(),
+  });
 
-  try {
-    await resend.emails.send({
-      from: process.env.RESEND_FROM || "ScamShieldy Contact <noreply@scamshieldy.com>",
-      to: ["mohamedabdlcader@gmail.com"],
-      replyTo: email.trim(),
-      subject: `[ScamShieldy Contact] ${subject.trim()}`,
-      text: [
-        `From: ${name.trim()} <${email.trim()}>`,
-        `Subject: ${subject.trim()}`,
-        "",
-        message.trim(),
-      ].join("\n"),
-    });
-  } catch (err) {
-    console.error("[Contact] Resend error:", err);
+  if (error) {
+    console.error("[Contact] DB insert error:", error);
     return NextResponse.json({ error: "Failed to send message. Please try again." }, { status: 500 });
   }
 
