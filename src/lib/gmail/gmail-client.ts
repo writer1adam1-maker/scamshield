@@ -72,9 +72,10 @@ async function fetchRecentMessages(
   accessToken: string,
   headers: Record<string, string>
 ): Promise<GmailHistoryResult> {
-  // Get list of recent message IDs
+  // Get list of recent message IDs — include SPAM so phishing emails are caught
+  // Cap at 30 to stay within Vercel's 30s function timeout when scanning each
   const listRes = await fetch(
-    `${GMAIL_API}/users/me/messages?maxResults=50`,
+    `${GMAIL_API}/users/me/messages?maxResults=30&includeSpamTrash=true`,
     { headers }
   );
 
