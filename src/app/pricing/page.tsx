@@ -181,23 +181,21 @@ export default function PricingPage() {
   const [annual, setAnnual] = useState(false);
   const [upgrading, setUpgrading] = useState<string | null>(null);
 
+  const LEMON_URLS: Record<string, { monthly: string; annual: string }> = {
+    starter:      { monthly: "https://mo-digital-labs.lemonsqueezy.com/checkout/buy/69c41815-6062-42e0-8d6a-c3d82b3f3756", annual: "https://mo-digital-labs.lemonsqueezy.com/checkout/buy/5bbad25c-f267-4059-a5ec-4678df9cb95e" },
+    pro:          { monthly: "https://mo-digital-labs.lemonsqueezy.com/checkout/buy/31f6181c-1155-4f2c-a0b1-c88b325853b2", annual: "https://mo-digital-labs.lemonsqueezy.com/checkout/buy/45d28624-08df-4369-a476-0cfa5bd6a9bf" },
+    team:         { monthly: "https://mo-digital-labs.lemonsqueezy.com/checkout/buy/546bd752-a465-4fe6-a03f-f44776796d7a", annual: "https://mo-digital-labs.lemonsqueezy.com/checkout/buy/1f411d08-a726-4b55-9bff-b7b4821c79a6" },
+    organization: { monthly: "https://mo-digital-labs.lemonsqueezy.com/checkout/buy/d9ae6baf-dae9-4b09-9dab-c1e3df1228c9", annual: "https://mo-digital-labs.lemonsqueezy.com/checkout/buy/4a76a922-10ae-48cf-b44e-c6683225f38b" },
+    enterprise:   { monthly: "https://mo-digital-labs.lemonsqueezy.com/checkout/buy/eff6c38f-1169-427c-994d-816d65e3b148", annual: "https://mo-digital-labs.lemonsqueezy.com/checkout/buy/2ee8e14a-d483-4d85-b2b6-96d74be0790e" },
+  };
+
   async function handleUpgrade(planId: string) {
     if (planId === "free") { router.push("/"); return; }
-    setUpgrading(planId);
-    try {
-      const res = await fetch("/api/stripe/checkout", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ plan: planId, annual }),
-      });
-      const data = await res.json();
-      if (data.url && typeof data.url === "string" && data.url.startsWith("https://checkout.stripe.com/")) {
-        window.location.href = data.url;
-      } else if (res.status === 401) {
-        router.push("/login?next=/pricing");
-      }
-    } catch { /* silent */ }
-    finally { setUpgrading(null); }
+    const urls = LEMON_URLS[planId];
+    if (urls) {
+      window.location.href = annual ? urls.annual : urls.monthly;
+      return;
+    }
   }
 
   // Split into 2 rows: individual (3) + business (3)
