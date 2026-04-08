@@ -200,17 +200,24 @@ export default function PricingPage() {
 
   async function handleUpgrade(planId: string) {
     if (planId === "free") { router.push("/"); return; }
+
+    // Must be logged in — webhook needs user ID to link payment to account
+    if (!currentUser) {
+      router.push("/login?redirect=/pricing");
+      return;
+    }
+
     const urls = LEMON_URLS[planId];
     if (!urls) return;
 
     setUpgrading(planId);
 
-    let baseUrl = annual ? urls.annual : urls.monthly;
+    const baseUrl = annual ? urls.annual : urls.monthly;
 
     // Pass user identity so webhook can match payment to account
     const params = new URLSearchParams();
-    if (currentUser?.id)    params.set("checkout[custom][user_id]", currentUser.id);
-    if (currentUser?.email) params.set("checkout[email]", currentUser.email);
+    params.set("checkout[custom][user_id]", currentUser.id);
+    params.set("checkout[email]", currentUser.email);
     params.set("checkout[custom][plan]", planId);
 
     window.location.href = baseUrl + "?" + params.toString();
