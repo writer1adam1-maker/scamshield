@@ -1,11 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import {
   Shield, Zap, Check, X, ChevronDown, ChevronUp, Lock, Crown, Building2, Users, Gift,
   Rocket, Globe,
 } from "lucide-react";
+import { createBrowserClient } from "@/lib/supabase/client";
 
 const PLANS = [
   {
@@ -180,6 +181,14 @@ export default function PricingPage() {
   const [expandedFaq, setExpandedFaq] = useState<number | null>(null);
   const [annual, setAnnual] = useState(false);
   const [upgrading, setUpgrading] = useState<string | null>(null);
+  const [currentUser, setCurrentUser] = useState<{ id: string; email: string } | null>(null);
+
+  useEffect(() => {
+    const supabase = createBrowserClient();
+    supabase.auth.getUser().then(({ data }) => {
+      if (data.user) setCurrentUser({ id: data.user.id, email: data.user.email ?? "" });
+    });
+  }, []);
 
   const LEMON_URLS: Record<string, { monthly: string; annual: string }> = {
     starter:      { monthly: "https://mo-digital-labs.lemonsqueezy.com/checkout/buy/69c41815-6062-42e0-8d6a-c3d82b3f3756", annual: "https://mo-digital-labs.lemonsqueezy.com/checkout/buy/5bbad25c-f267-4059-a5ec-4678df9cb95e" },
@@ -192,10 +201,19 @@ export default function PricingPage() {
   async function handleUpgrade(planId: string) {
     if (planId === "free") { router.push("/"); return; }
     const urls = LEMON_URLS[planId];
-    if (urls) {
-      window.location.href = annual ? urls.annual : urls.monthly;
-      return;
-    }
+    if (!urls) return;
+
+    setUpgrading(planId);
+
+    let baseUrl = annual ? urls.annual : urls.monthly;
+
+    // Pass user identity so webhook can match payment to account
+    const params = new URLSearchParams();
+    if (currentUser?.id)    params.set("checkout[custom][user_id]", currentUser.id);
+    if (currentUser?.email) params.set("checkout[email]", currentUser.email);
+    params.set("checkout[custom][plan]", planId);
+
+    window.location.href = baseUrl + "?" + params.toString();
   }
 
   // Split into 2 rows: individual (3) + business (3)

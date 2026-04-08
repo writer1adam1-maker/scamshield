@@ -28,7 +28,7 @@ export interface DbScan {
 export interface DbUser {
   id: string;
   email: string;
-  plan: "free" | "pro";
+  plan: "free" | "starter" | "pro" | "team" | "organization" | "enterprise";
   stripe_customer_id: string | null;
   stripe_subscription_id: string | null;
   scan_count_today: number;
