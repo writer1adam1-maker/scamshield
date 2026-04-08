@@ -97,14 +97,15 @@ export default function GmailShieldPage() {
     setScanning(true);
     setScanMessage(null);
     try {
-      const res = await fetch("/api/gmail/poll", { method: "POST" });
+      // Full rescan: resets historyId, clears stale results, rescans 50 most recent emails
+      const res = await fetch("/api/gmail/rescan", { method: "POST" });
       const data = await res.json();
       if (data.scanned !== undefined) {
         setScanMessage(`Scanned ${data.scanned} emails, found ${data.threats} threat${data.threats !== 1 ? "s" : ""}.`);
         await loadStatus();
         await loadResults();
       } else {
-        setScanMessage("Scan complete.");
+        setScanMessage(data.error ?? "Scan failed. Please try again.");
       }
     } catch {
       setScanMessage("Scan failed. Please try again.");
