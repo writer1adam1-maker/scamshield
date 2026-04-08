@@ -170,6 +170,8 @@ export interface AnalysisInput {
   screenshotOcrText?: string;
   whoisData?: WhoisData;
   sslData?: SslData;
+  /** Email sender domain scanning mode — weights URL analysis heavily since only metadata is available */
+  emailMode?: boolean;
 }
 
 export interface WhoisData {

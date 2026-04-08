@@ -40,7 +40,7 @@ export async function scanEmails(
       // Need at least something to scan
       if (!text.trim() && !url) continue;
 
-      const result = await runVERIDICT({ text: text || undefined, url });
+      const result = await runVERIDICT({ text: text || undefined, url, emailMode: true });
       scanned++;
 
       const threatLevel = result.threatLevel;

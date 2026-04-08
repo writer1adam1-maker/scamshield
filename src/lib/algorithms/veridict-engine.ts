@@ -767,8 +767,23 @@ export async function analyzeWithVERIDICT(input: AnalysisInput): Promise<VERIDIC
 
     // Blend URL deep score into final score via inclusion-exclusion
     const sUrl = urlDeepAnalysis.overallRiskScore;
-    const blendedScore = (1 - (1 - preFinalScore / 100) * (1 - sUrl * 0.6)) * 100;
-    adjustedScore = Math.min(100, blendedScore);
+
+    if (processedInput.emailMode) {
+      // Email mode: we only have subject + snippet — text analysis is weak by design.
+      // Weight URL (sender domain) analysis much more heavily.
+      // sUrl alone drives the threat level: 0.7+ → HIGH, 0.85+ → CRITICAL floor.
+      const urlWeight = 0.88;
+      const blendedScore = (1 - (1 - preFinalScore / 100) * (1 - sUrl * urlWeight)) * 100;
+      adjustedScore = Math.min(100, blendedScore);
+
+      // Apply floor based on URL risk alone so a clearly bad domain can't be buried
+      if (sUrl >= 0.85) adjustedScore = Math.max(adjustedScore, 85);       // → CRITICAL
+      else if (sUrl >= 0.68) adjustedScore = Math.max(adjustedScore, 65);  // → HIGH
+      else if (sUrl >= 0.45) adjustedScore = Math.max(adjustedScore, 40);  // → MEDIUM
+    } else {
+      const blendedScore = (1 - (1 - preFinalScore / 100) * (1 - sUrl * 0.6)) * 100;
+      adjustedScore = Math.min(100, blendedScore);
+    }
   } else {
     adjustedScore = preFinalScore;
   }
