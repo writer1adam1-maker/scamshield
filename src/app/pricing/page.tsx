@@ -78,6 +78,7 @@ const PLANS = [
     annualPrice: 39,
     scansLabel: "5,000 scans / 30 days",
     seats: 5,
+    comingSoon: true,
     description: "For small teams and agencies. API included.",
     highlight: null,
     color: "text-green-400",
@@ -101,6 +102,7 @@ const PLANS = [
     annualPrice: 119,
     scansLabel: "20,000 scans / 30 days",
     seats: 15,
+    comingSoon: true,
     description: "For growing organizations needing scale.",
     highlight: null,
     color: "text-purple-400",
@@ -124,6 +126,7 @@ const PLANS = [
     annualPrice: 319,
     scansLabel: "100,000 scans / 30 days",
     seats: 999,
+    comingSoon: true,
     description: "For large enterprises and high-volume platforms.",
     highlight: null,
     color: "text-orange-400",
@@ -346,17 +349,22 @@ function PlanCard({ plan, annual, upgrading, onUpgrade }: {
   const Icon = plan.icon;
   const price = annual ? plan.annualPrice : plan.monthlyPrice;
   const isPopular = plan.highlight === "POPULAR";
+  const comingSoon = (plan as { comingSoon?: boolean }).comingSoon === true;
 
   return (
-    <div className={`glass-card p-5 flex flex-col relative overflow-hidden ${isPopular ? "border-yellow-400/30" : ""}`}>
+    <div className={`glass-card p-5 flex flex-col relative overflow-hidden ${isPopular ? "border-yellow-400/30" : ""} ${comingSoon ? "opacity-50 grayscale pointer-events-none select-none" : ""}`}>
       {isPopular && (
         <div className="absolute -top-px left-0 right-0 h-0.5 bg-gradient-to-r from-transparent via-yellow-400 to-transparent" />
       )}
-      {plan.highlight && (
+      {comingSoon ? (
+        <div className="absolute top-3 right-3 px-2 py-0.5 rounded-full bg-slate-500/20 border border-slate-500/30 text-slate-400 text-[10px] font-mono">
+          COMING SOON
+        </div>
+      ) : plan.highlight ? (
         <div className="absolute top-3 right-3 px-2 py-0.5 rounded-full bg-yellow-400/10 border border-yellow-400/20 text-yellow-400 text-[10px] font-mono">
           {plan.highlight}
         </div>
-      )}
+      ) : null}
 
       <div className="mb-4">
         <div className={`flex items-center gap-2 mb-2 ${plan.color}`}>
@@ -397,17 +405,18 @@ function PlanCard({ plan, annual, upgrading, onUpgrade }: {
 
       <button
         onClick={() => onUpgrade(plan.id)}
-        disabled={upgrading === plan.id}
+        disabled={upgrading === plan.id || comingSoon}
         className={`w-full py-2.5 px-4 rounded-lg text-sm font-semibold transition-all flex items-center justify-center gap-2 disabled:opacity-50 ${
-          plan.id === "free"
+          comingSoon
+            ? "bg-slate-700 text-slate-400 cursor-not-allowed"
+            : plan.id === "free"
             ? "border border-border text-text-primary hover:border-shield/30 hover:bg-shield/5"
             : isPopular
             ? "bg-yellow-400 text-void hover:bg-yellow-300"
             : "bg-shield text-void hover:bg-shield/90 shield-glow"
         }`}
       >
-        {plan.id === "free" ? <Shield className="w-3.5 h-3.5" /> : upgrading === plan.id ? <Rocket className="w-3.5 h-3.5 animate-bounce" /> : <Lock className="w-3.5 h-3.5" />}
-        {upgrading === plan.id ? "Redirecting..." : plan.id === "free" ? "Get Started Free" : `Get ${plan.name}`}
+        {comingSoon ? "Coming Soon" : plan.id === "free" ? <><Shield className="w-3.5 h-3.5" /> Get Started Free</> : upgrading === plan.id ? <><Rocket className="w-3.5 h-3.5 animate-bounce" /> Redirecting...</> : <><Lock className="w-3.5 h-3.5" /> {`Get ${plan.name}`}</>}
       </button>
     </div>
   );
