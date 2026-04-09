@@ -63,17 +63,19 @@ export async function scanEmails(
 
       // Upsert result — don't store duplicate message IDs
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      await (db as any).from("gmail_scan_results").upsert({
+      const { error: upsertErr } = await (db as any).from("gmail_scan_results").upsert({
         user_id: userId,
         gmail_message_id: msg.id,
         sender_domain: msg.senderDomain || null,
         subject_preview: msg.subject ? msg.subject.substring(0, 80) : null,
         received_at: msg.receivedAt?.toISOString() ?? null,
-        score: finalScore,
+        score: Math.round(finalScore),   // DB column is integer
         threat_level: threatLevel,
-        category: result.category,
+        category: result.category ?? "GENERIC",
         evidence_json: (result.evidence ?? []).slice(0, 5),
       }, { onConflict: "user_id,gmail_message_id" });
+
+      if (upsertErr) console.error("[scan-emails] Upsert failed for", msg.id, upsertErr.message);
     } catch (err) {
       console.error("[scan-emails] Failed to scan message", msg.id, err);
     }
