@@ -78,3 +78,6 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Rescan failed" }, { status: 500 });
   }
 }
+
+// Extend Vercel function timeout to 60s — scanning 30 emails serially needs more than the default 10s
+export const maxDuration = 60;

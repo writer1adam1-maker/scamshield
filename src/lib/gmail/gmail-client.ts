@@ -13,6 +13,7 @@ export interface GmailMessage {
   senderDomain: string;
   receivedAt: Date | null;
   snippet: string; // Gmail snippet (first ~100 chars, safe to use for scanning)
+  isSpam: boolean; // true if message has SPAM label — used to apply threat floor in scoring
 }
 
 export interface GmailHistoryResult {
@@ -144,6 +145,10 @@ function parseMessage(data: Record<string, unknown> | null): GmailMessage | null
   const email = emailMatch?.[1] ?? from;
   const senderDomain = email.includes("@") ? email.split("@")[1].toLowerCase().trim() : "";
 
+  // Extract label IDs to detect spam — labelIds is top-level on the message object
+  const labelIds: string[] = Array.isArray(data.labelIds) ? (data.labelIds as string[]) : [];
+  const isSpam = labelIds.includes("SPAM");
+
   let receivedAt: Date | null = null;
   if (dateStr) {
     try { receivedAt = new Date(dateStr); } catch { /* ignore */ }
@@ -157,6 +162,7 @@ function parseMessage(data: Record<string, unknown> | null): GmailMessage | null
     senderDomain,
     receivedAt,
     snippet: snippet.substring(0, 200),
+    isSpam,
   };
 }
 

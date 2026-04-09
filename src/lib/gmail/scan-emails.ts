@@ -43,14 +43,22 @@ export async function scanEmails(
       const result = await runVERIDICT({ text: text || undefined, url, emailMode: true });
       scanned++;
 
-      const threatLevel = result.threatLevel;
+      let finalScore = result.score;
+      let threatLevel = result.threatLevel;
+
+      // Gmail already classified this as SPAM — minimum score is HIGH (65)
+      // The sender domain may look clean but the content triggered Gmail's own filters
+      if (msg.isSpam && finalScore < 65) {
+        finalScore = Math.max(finalScore, 65);
+        threatLevel = "HIGH";
+      }
       if (threatLevel === "HIGH" || threatLevel === "CRITICAL") threats++;
 
       results.push({
         subject_preview: msg.subject ? msg.subject.substring(0, 80) : null,
         sender_domain: msg.senderDomain || null,
         threat_level: threatLevel,
-        score: result.score,
+        score: finalScore,
       });
 
       // Upsert result — don't store duplicate message IDs
@@ -61,7 +69,7 @@ export async function scanEmails(
         sender_domain: msg.senderDomain || null,
         subject_preview: msg.subject ? msg.subject.substring(0, 80) : null,
         received_at: msg.receivedAt?.toISOString() ?? null,
-        score: result.score,
+        score: finalScore,
         threat_level: threatLevel,
         category: result.category,
         evidence_json: (result.evidence ?? []).slice(0, 5),
